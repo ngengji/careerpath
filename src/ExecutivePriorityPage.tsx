@@ -171,7 +171,8 @@ export default function ExecutivePriorityPage() {
                     const isHov = hoveredEmp?.id === e.id;
                     const dotX = cx(e.years), dotY = cy(e.performance);
                     const r = rank ? 5.5 : risk ? 5 : 3.8;
-                    const color = PRIORITY_META[tier].color;
+                    // at-risk = orange (matches overview page), P1 = red, non-at-risk = tier color
+                    const color = rank ? "#b91c1c" : risk ? C.orange : PRIORITY_META[tier].color;
                     return (
                       <g key={e.id} style={{ cursor: "pointer" }} onMouseEnter={() => setHoveredEmp(e)}>
                         {/* glow for hovered */}
@@ -202,13 +203,15 @@ export default function ExecutivePriorityPage() {
                 <text x={CPAD.left + CiW / 2} y={CH - 4} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
                 <text x={12} y={CPAD.top + CiH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${CPAD.top + CiH / 2})`}>Performance</text>
                 {/* legend */}
-                <g transform={`translate(${CPAD.left + CiW - 120},${CPAD.top + CiH - 20})`}>
-                  <polygon points="6,0 10.4,8 1.6,8" fill="#b91c1c" fillOpacity={0.8} />
-                  <text x={14} y={8} fontSize={8} fill={C.chartSub}>Grade ≤ 3 (at-risk)</text>
-                  <circle cx={6} cy={18} r={3.5} fill="#1d4ed8" fillOpacity={0.65} />
-                  <text x={14} y={22} fontSize={8} fill={C.chartSub}>Grade 4+</text>
-                  <circle cx={6} cy={30} r={2} fill="#1a7340" />
-                  <text x={14} y={34} fontSize={8} fill={C.chartSub}>มี Action แล้ว</text>
+                <g transform={`translate(${CPAD.left + CiW - 120},${CPAD.top + CiH - 26})`}>
+                  <polygon points="6,0 10.4,8 1.6,8" fill="#b91c1c" fillOpacity={0.9} />
+                  <text x={14} y={8} fontSize={8} fill={C.chartSub}>P1 (top 5 at-risk)</text>
+                  <polygon points="6,12 10.4,20 1.6,20" fill={C.orange} fillOpacity={0.85} />
+                  <text x={14} y={20} fontSize={8} fill={C.chartSub}>▲ กลุ่มน่าเป็นห่วง</text>
+                  <circle cx={6} cy={30} r={3.5} fill="#1d4ed8" fillOpacity={0.65} />
+                  <text x={14} y={34} fontSize={8} fill={C.chartSub}>Grade 4+ (P2/P3)</text>
+                  <circle cx={6} cy={42} r={2} fill="#1a7340" />
+                  <text x={14} y={46} fontSize={8} fill={C.chartSub}>มี Action แล้ว</text>
                 </g>
                 <text x={CPAD.left + CiW - 55} y={CPAD.top + 11} fontSize={8} fill="#b91c1c" fontWeight={700}>
                   {/* P1 rank indicator */}
