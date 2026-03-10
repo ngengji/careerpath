@@ -197,7 +197,7 @@ export default function ExecutivePriorityPage() {
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Priority Matrix: อายุงาน x Performance ปีล่าสุด</div>
-              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = Top 5 (Grade <= 3, อายุงาน >= 10) เรียง performance สูงก่อน</div>
+              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = Top 5 (Grade ≤ 3, อายุงาน ≥ 10) เรียง performance สูงก่อน</div>
             </div>
             {(() => {
               const W = 420;
@@ -226,7 +226,7 @@ export default function ExecutivePriorityPage() {
                     const tier = getPriorityTier(e) as keyof typeof PRIORITY_META;
                     return <circle key={e.id} cx={x(e.years)} cy={y(e.performance)} r={3.6} fill={PRIORITY_META[tier].color} fillOpacity={0.68} />;
                   })}
-                  <text x={x(10) + 5} y={pad.top + 10} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Candidate Pool (Tenure >= 10)</text>
+                  <text x={x(10) + 5} y={pad.top + 10} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Candidate Pool (Tenure ≥ 10)</text>
                   <text x={pad.left + iW / 2} y={H - 3} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
                   <text x={12} y={pad.top + iH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${pad.top + iH / 2})`}>Performance</text>
                 </svg>
