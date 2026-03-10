@@ -83,7 +83,7 @@ export const isAtRisk = (e: Employee) => e.years >= 10 && e.grade <= 3;
 
 export const P1_IDS = new Set(
   [...ALL_EMP]
-    .filter(e => e.grade <= 3 && e.years >= 10)
+    .filter(e => e.grade <= 3 && e.years >= 10 && e.performance >= 3.0)
     .sort((a, b) => b.performance - a.performance || b.years - a.years)
     .slice(0, 5)
     .map(e => e.id)
@@ -97,7 +97,7 @@ export const getPriorityTier = (e: Employee): "P1" | "P2" | "P3" => {
 };
 
 export const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
+  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Performance ≥ 3.0 + Tenure ≥ 10 ปี + Grade ≤ 3" },
   P2: { label: "P2 ศักยภาพดี",    color: "#c2410c", bg: "#ffedd5", note: "พร้อมเติบโตต่อในระยะกลาง" },
   P3: { label: "P3 พัฒนาต่อ",     color: "#1d4ed8", bg: "#dbeafe", note: "ติดตามและยกระดับผลลัพธ์" },
 };
