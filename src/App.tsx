@@ -96,6 +96,22 @@ export default function App() {
   const xTicks = compact ? [0,5,10,15] : [0,2,4,6,8,10,12,14];
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
+  // offset at-risk dots so all 7 are visible even when overlapping
+  const riskOffsets: Record<number, {dx:number,dy:number}> = {};
+  {
+    const placed: {x:number,y:number}[] = [];
+    const minDist = 13;
+    for (const e of atRisk) {
+      let dx = 0, dy = 0;
+      const bx = xSc(e.years), by = ySc(e.yPos);
+      let tries = 0;
+      while (tries < 8 && placed.some(p => Math.hypot(bx+dx-p.x, by+dy-p.y) < minDist)) {
+        dx += 9; dy -= 5; tries++;
+      }
+      riskOffsets[e.id] = {dx, dy};
+      placed.push({x: bx+dx, y: by+dy});
+    }
+  }
   // P1 rank map: id → rank 1-5 (always visible on chart)
   const p1RankMap = new Map(
     [...ALL_EMP].filter(e=>P1_IDS.has(e.id))
@@ -403,7 +419,7 @@ export default function App() {
                   const bLayer=p1RankMap.has(b.id)?2:isAtRisk(b)?1:0;
                   return (aLayer+aMatch)-(bLayer+bMatch);
                 }).map(e=>{
-                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
+                  const _off=riskOffsets[e.id]; const dotX=xSc(e.years)+(_off?_off.dx:0), dotY=ySc(e.yPos)+(_off?_off.dy:0);
                   const risk=isAtRisk(e), isHov=hovered===e.id, isSel=selEmp?.id===e.id;
                   const hasAct=(acts[e.id]||[]).length>0;
                   const isSearchHit=searchActive&&matchSearch(e,searchQuery);
@@ -430,23 +446,11 @@ export default function App() {
                   );
                 })}
 
-                {/* P1 employees: white ring outline to distinguish from other at-risk dots */}
-                {[...p1RankMap.keys()].map(id=>{
-                  const e = ALL_EMP.find(x=>x.id===id)!;
-                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
-                  const isHit=searchActive&&matchSearch(e,searchQuery);
-                  if(isHit) return null;
-                  return (
-                    <g key={`p1ring-${id}`} pointerEvents="none">
-                      <circle cx={dotX} cy={dotY} r={10} fill="none" stroke="#fff" strokeWidth={2} opacity={0.85}/>
-                      <circle cx={dotX} cy={dotY} r={12} fill="none" stroke="#b91c1c" strokeWidth={1} opacity={0.6} strokeDasharray="3 2"/>
-                    </g>
-                  );
-                })}
+
 
                 {/* flag lines for search hits — always on top of all dots */}
                 {searchActive && searchMatches.map(e=>{
-                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
+                  const _sOff=riskOffsets[e.id]; const dotX=xSc(e.years)+(_sOff?_sOff.dx:0), dotY=ySc(e.yPos)+(_sOff?_sOff.dy:0);
                   const risk=isAtRisk(e);
                   const flagColor=risk?"#fb923c":"#60a5fa";
                   return (
