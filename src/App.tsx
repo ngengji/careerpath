@@ -321,6 +321,35 @@ export default function App() {
           </div>
         </div>
 
+        {/* ── SEARCH RESULTS PANEL ── */}
+        {searchActive && searchMatches.length > 0 && (
+          <div style={{background:"#1a2644",borderRadius:8,padding:"10px 14px",border:`1px solid ${C.orange}`,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontSize:fs(11),color:C.orange,fontWeight:700,flexShrink:0}}>🔍 พบ {searchMatches.length} คน:</span>
+            {searchMatches.map(e=>{
+              const tier=getPriorityTier(e);
+              const risk=isAtRisk(e);
+              return (
+                <div key={e.id}
+                  onClick={()=>setSel(selEmp?.id===e.id?null:e)}
+                  style={{cursor:"pointer",background:risk?"#EC592420":"#394A7630",border:`1.5px solid ${risk?C.orange:C.blueLight}`,borderRadius:6,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:fs(11),fontWeight:700,color:"#fff"}}>#{e.id}</span>
+                  <span style={{fontSize:fs(10),color:C.sub}}>{e.subgrade}</span>
+                  <span style={{fontSize:fs(10),color:risk?C.orange:C.gray}}>
+                    {e.years}ปี · {e.performance}/5
+                  </span>
+                  <span style={{fontSize:fs(9),fontWeight:700,color:PRIORITY_META[tier].color}}>
+                    {tier}
+                  </span>
+                  {risk&&<span style={{fontSize:fs(9),color:C.orange}}>▲</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {searchActive && searchMatches.length === 0 && (
+          <div style={{background:"#1a2644",borderRadius:8,padding:"8px 14px",border:`1px solid #3a4e7a`,fontSize:fs(11),color:"#94a3b8"}}>ไม่พบพนักงานที่ตรงกับ "{searchQuery}"</div>
+        )}
+
         {/* ── CHART + ACTION PANEL ── */}
         <div style={{display:"flex",gap:PANEL_GAP,alignItems:"flex-start"}}>
 
@@ -388,8 +417,24 @@ export default function App() {
                             fill={GRADE_DOT[e.grade]} fillOpacity={isDimmed?0.12:isHov||isSel||isSearchHit?1:0.62}
                             stroke={isSearchHit?"#fff":isSel?"#fff":"none"} strokeWidth={1.5}/>}
                       {hasAct&&!isDimmed&&<circle cx={dotX+(risk?5:4)} cy={dotY-(risk?5:4)} r={3} fill="#1a7340" stroke="#fff" strokeWidth={1}/>}
-                      {/* label for search hit */}
-                      {isSearchHit&&<text x={dotX} y={dotY-r-4} textAnchor="middle" fontSize={fs(10)} fontWeight={700} fill="#fff" stroke={C.blueDark} strokeWidth={3} paintOrder="stroke">#{e.id}</text>}
+                    </g>
+                  );
+                })}
+
+                {/* flag lines for search hits — always on top of all dots */}
+                {searchActive && searchMatches.map(e=>{
+                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
+                  const risk=isAtRisk(e);
+                  const flagColor=risk?"#fb923c":"#60a5fa";
+                  return (
+                    <g key={`flag-${e.id}`} pointerEvents="none">
+                      {/* vertical dashed line from top to dot */}
+                      <line x1={dotX} y1={0} x2={dotX} y2={dotY-14} stroke={flagColor} strokeWidth={1.5} strokeDasharray="4 2" opacity={0.85}/>
+                      {/* badge at top */}
+                      <rect x={dotX-20} y={-14} width={40} height={13} rx={3} fill={flagColor}/>
+                      <text x={dotX} y={-4} textAnchor="middle" fontSize={fs(9)} fontWeight={700} fill="#fff">#{e.id}</text>
+                      {/* dot ring highlight */}
+                      <circle cx={dotX} cy={dotY} r={14} fill="none" stroke={flagColor} strokeWidth={2} opacity={0.9}/>
                     </g>
                   );
                 })}
