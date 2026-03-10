@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 import {
-  ALL_EMP, getPriorityTier, PRIORITY_META, ACTION_TAGS,
-  loadActions, isAtRisk, P1_IDS, type Employee,
+  ALL_EMP, SUBGRADES, getPriorityTier, PRIORITY_META, ACTION_TAGS,
+  loadActions, saveAction, isAtRisk, P1_IDS, type Employee,
 } from "./data";
 
 const C = {
@@ -46,6 +46,8 @@ export default function ExecutivePriorityPage() {
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
   const [acts, setActs] = useState<Record<number, string[]>>({});
   const [hoveredEmp, setHoveredEmp] = useState<Employee | null>(null);
+  const [selEmp, setSelEmp] = useState<Employee | null>(null);
+  const [saving, setSaving] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState("");
   const chartRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,16 @@ export default function ExecutivePriorityPage() {
   const actionedCount = (list: Employee[]) => list.filter(e => (acts[e.id] || []).length > 0).length;
 
   const onZoomChange = (z: number) => { setZoomLevel(z); applyZoom(z); };
+
+  const toggle = (eid: number, key: string) => {
+    setActs(prev => {
+      const current = prev[eid] || [];
+      const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key];
+      setSaving(true);
+      saveAction(eid, next).finally(() => setSaving(false));
+      return { ...prev, [eid]: next };
+    });
+  };
 
   return (
     <div style={{ background: "linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)", minHeight: "100dvh", fontFamily: "'Sarabun',sans-serif", padding: "24px 20px", boxSizing: "border-box" }}>
@@ -206,7 +218,9 @@ export default function ExecutivePriorityPage() {
                     // at-risk = orange, P1 = red, Grade 5-6 (ผู้บริหาร) = orange circle, rest = blue
                     const color = rank ? "#b91c1c" : risk ? C.orange : e.grade >= 5 ? C.orange : "#1d4ed8";
                     return (
-                      <g key={e.id} style={{ cursor: "pointer" }} onMouseEnter={() => setHoveredEmp(e)}>
+                      <g key={e.id} style={{ cursor: "pointer" }}
+                        onMouseEnter={() => setHoveredEmp(e)}
+                        onClick={() => setSelEmp(selEmp?.id === e.id ? null : e)}>
                         {/* search hit glow */}
                         {isSearchHit && <circle cx={dotX} cy={dotY} r={r + 6} fill="#fff" fillOpacity={0.2} />}
                         {/* hover glow */}
@@ -322,6 +336,56 @@ export default function ExecutivePriorityPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Action Panel (appears when a dot is clicked) ── */}
+        {selEmp && (
+          <div style={{ background: C.surface, border: `1.5px solid ${isAtRisk(selEmp) ? C.orange : C.blue}`, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: isAtRisk(selEmp) ? `${C.orange}20` : `${C.blue}30`, padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: "#fff", fontSize: 14, marginBottom: 2 }}>{selEmp.name}</div>
+                  <div style={{ fontSize: 12, color: isAtRisk(selEmp) ? C.orange : C.sub, fontWeight: 700 }}>Sub-Grade: {selEmp.subgrade}</div>
+                  <div style={{ fontSize: 12, color: "#7a90b8", marginTop: 1 }}>{SUBGRADES[selEmp.yIdx]?.position}</div>
+                </div>
+                <button onClick={() => setSelEmp(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#7a90b8", fontSize: 18, padding: 0, lineHeight: 1 }}>✕</button>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: C.orange, fontWeight: 700, background: `${C.orange}25`, padding: "3px 9px", borderRadius: 20 }}>⏱ {selEmp.years} ปี</span>
+                <span style={{ fontSize: 12, color: "#93c5fd", fontWeight: 700, background: "#1e3a8a40", padding: "3px 9px", borderRadius: 20 }}>📊 {selEmp.performance}/5</span>
+                <span style={{ fontSize: 12, color: PRIORITY_META[getPriorityTier(selEmp)].color, fontWeight: 700, background: PRIORITY_META[getPriorityTier(selEmp)].bg, padding: "3px 9px", borderRadius: 20 }}>{PRIORITY_META[getPriorityTier(selEmp)].label}</span>
+                {isAtRisk(selEmp) && <span style={{ fontSize: 12, color: "#fca5a5", fontWeight: 700, background: "#b91c1c40", padding: "3px 9px", borderRadius: 20 }}>▲ น่าเป็นห่วง</span>}
+              </div>
+            </div>
+            <div style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Action Plan สำหรับผู้บริหาร</div>
+                {saving && <span style={{ fontSize: 10, color: C.orange, fontWeight: 600 }}>กำลังบันทึก...</span>}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {ACTION_TAGS.map(a => {
+                  const checked = (acts[selEmp.id] || []).includes(a.key);
+                  return (
+                    <div key={a.key} onClick={() => toggle(selEmp.id, a.key)}
+                      style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 11px", borderRadius: 8,
+                        border: `1.5px solid ${checked ? a.color : C.border}`,
+                        background: checked ? a.bg : "#1a2644", cursor: "pointer", transition: "all 0.14s" }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, border: `1.5px solid ${checked ? a.color : "#3a4e7a"}`, background: checked ? a.color : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {checked && <svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </div>
+                      <span style={{ fontSize: 12, color: checked ? a.color : C.sub, fontWeight: checked ? 700 : 400 }}>{a.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {(acts[selEmp.id] || []).length > 0 && (
+                <div style={{ marginTop: 12, padding: "9px 11px", background: "#1a2644", borderRadius: 7, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 5 }}>✅ Action ที่เลือก</div>
+                  {(acts[selEmp.id] || []).map(k => { const a = ACTION_TAGS.find(x => x.key === k); return a ? <div key={k} style={{ fontSize: 12, color: a.color, fontWeight: 600, marginBottom: 2 }}>· {a.label}</div> : null; })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* P2 list with actions */}
         <div style={{ background: "#fff", borderRadius: 12, padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", border: "1px solid #e0e4f0" }}>
