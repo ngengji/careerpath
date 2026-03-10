@@ -61,9 +61,9 @@ const YEAR_RANGE: Record<string, [number, number]> = {
 };
 
 const PRIORITY_META = {
-  P1: { label: "P1 เร่งด่วน", color: "#b91c1c", bg: "#fee2e2", action: "Retention + Performance Plan ภายใน 30 วัน" },
-  P2: { label: "P2 วางแผน", color: "#c2410c", bg: "#ffedd5", action: "Coach + Stretch Assignment ภายในไตรมาส" },
-  P3: { label: "P3 เฝ้าระวัง", color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและรักษาแรงจูงใจ" },
+  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", action: "เตรียม succession และบทบาทใหญ่ทันที" },
+  P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", action: "วางแผนเร่งพัฒนาเพื่อขึ้นกลุ่มนำ" },
+  P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและยกระดับ performance" },
 };
 
 type Employee = {
@@ -116,8 +116,8 @@ function generateEmployees() {
 const ALL_EMP = generateEmployees();
 
 const getPriorityTier = (e: Employee) => {
-  if (e.years >= 10 && e.performance <= 2.6) return "P1";
-  if ((e.years >= 8 && e.performance <= 3.2) || (e.years >= 10 && e.performance <= 3.6)) return "P2";
+  if (e.years >= 10 && e.performance >= 4.2) return "P1";
+  if ((e.years >= 8 && e.performance >= 3.6) || (e.years >= 10 && e.performance >= 3.3)) return "P2";
   return "P3";
 };
 
@@ -130,7 +130,7 @@ export default function ExecutivePriorityPage() {
   };
 
   const topPriority = [...priorityGroups.P1]
-    .sort((a, b) => a.performance - b.performance || b.years - a.years)
+    .sort((a, b) => b.performance - a.performance || b.years - a.years)
     .slice(0, 8);
 
   const onZoomChange = (z: number) => {
@@ -189,7 +189,7 @@ export default function ExecutivePriorityPage() {
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Priority Matrix: อายุงาน x Performance ปีล่าสุด</div>
-              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = tenure สูง + performance ต่ำ</div>
+              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = tenure สูง + performance สูง</div>
             </div>
             {(() => {
               const W = 420;
@@ -201,7 +201,7 @@ export default function ExecutivePriorityPage() {
               const y = (v: number) => pad.top + iH - ((v - 1) / 4) * iH;
               return (
                 <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
-                  <rect x={x(10)} y={y(2.6)} width={W - pad.right - x(10)} height={iH - (y(2.6) - pad.top)} fill="#fee2e2" rx={4} />
+                  <rect x={x(10)} y={pad.top} width={W - pad.right - x(10)} height={y(4.2)-pad.top} fill="#fee2e2" rx={4} />
                   {[0, 5, 10, 15].map((t) => (
                     <g key={t}>
                       <line x1={x(t)} y1={pad.top} x2={x(t)} y2={pad.top + iH} stroke={t === 10 ? "#f97316" : "#ebebeb"} strokeWidth={t === 10 ? 1.4 : 0.8} strokeDasharray={t === 10 ? "5 3" : ""} />
@@ -218,7 +218,7 @@ export default function ExecutivePriorityPage() {
                     const tier = getPriorityTier(e) as keyof typeof PRIORITY_META;
                     return <circle key={e.id} cx={x(e.years)} cy={y(e.performance)} r={3.6} fill={PRIORITY_META[tier].color} fillOpacity={0.68} />;
                   })}
-                  <text x={x(10) + 5} y={y(2.6) - 6} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Priority Zone</text>
+                  <text x={x(10) + 5} y={pad.top + 10} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Priority Zone</text>
                   <text x={pad.left + iW / 2} y={H - 3} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
                   <text x={12} y={pad.top + iH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${pad.top + iH / 2})`}>Performance</text>
                 </svg>
@@ -229,7 +229,7 @@ export default function ExecutivePriorityPage() {
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Top Priority Candidates (P1)</div>
-              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>เรียงจาก performance ต่ำสุดก่อน แล้วดู tenure สูง</div>
+              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>เรียงจาก performance สูงสุดก่อน แล้วดู tenure สูง</div>
             </div>
             <div style={{ display: "grid", gap: 7 }}>
               {topPriority.map((e, idx) => (
