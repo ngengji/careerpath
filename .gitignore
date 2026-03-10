@@ -1,3 +1,9 @@
 node_modules
 dist
 .DS_Store
+.claude/
+*.xlsx
+*.mp4
+tsconfig.app.tsbuildinfo
+tsconfig.node.tsbuildinfo
+server/actions.json

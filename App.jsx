@@ -1,7 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
-import * as XLSX from "xlsx";
 
 const C = {
   blue:     "#394A76",
@@ -66,37 +63,17 @@ function generateEmployees() {
   const total=190, tw=Object.values(DIST).reduce((a,b)=>a+b,0);
   let rem=total; const counts={};
   SUBGRADES.forEach((sg,i)=>{ if(i<SUBGRADES.length-1){counts[sg.key]=Math.round((DIST[sg.key]/tw)*total);rem-=counts[sg.key];}else counts[sg.key]=rem; });
-  SUBGRADES.forEach(sg=>{
-    const [mn,mx]=YEAR_RANGE[sg.key];
-    for(let i=0;i<counts[sg.key];i++){
-      const years=+(mn+rng()*(mx-mn)).toFixed(1);
-      const yIdx=SUBGRADES.findIndex(s=>s.key===sg.key);
-      const perfRaw = 3.5 + (sg.grade>=4?0.25:0) - (years>=10&&sg.grade<=3?0.8:0) + (rng()-0.5)*1.7;
-      const performance = +Math.max(1, Math.min(5, perfRaw)).toFixed(1);
-      emps.push({id:id++,subgrade:sg.key,grade:sg.grade,yIdx,yPos:yIdx+(rng()-0.5)*0.36,years,performance,name:`พนักงาน #${id-1}`});
-    }
-  });
+  SUBGRADES.forEach(sg=>{ const [mn,mx]=YEAR_RANGE[sg.key]; for(let i=0;i<counts[sg.key];i++){ const years=+(mn+rng()*(mx-mn)).toFixed(1); const yIdx=SUBGRADES.findIndex(s=>s.key===sg.key); emps.push({id:id++,subgrade:sg.key,grade:sg.grade,yIdx,yPos:yIdx+(rng()-0.5)*0.36,years,name:`พนักงาน #${id-1}`}); } });
   return emps;
 }
 const ALL_EMP = generateEmployees();
 const isAtRisk = e => e.years>=10 && e.grade<=3;
-const P1_IDS = new Set(
-  [...ALL_EMP]
-    .filter(e => e.grade <= 3 && e.years >= 10)
-    .sort((a,b) => b.performance - a.performance || b.years - a.years)
-    .slice(0,5)
-    .map(e => e.id)
+
+const Pill = ({children,active,color,onClick}) => (
+  <button onClick={onClick} style={{padding:"4px 13px",borderRadius:20,border:`1.5px solid ${active?color:"#3a4e7a"}`,background:active?color:"transparent",color:active?"#fff":C.sub,cursor:"pointer",fontSize:11,fontWeight:active?700:500,transition:"all 0.15s",whiteSpace:"nowrap"}}>
+    {children}
+  </button>
 );
-const getPriorityTier = (e) => {
-  if (P1_IDS.has(e.id)) return "P1";
-  if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
-  return "P3";
-};
-const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
-  P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", note: "พร้อมเติบโตต่อในระยะกลาง" },
-  P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", note: "ติดตามและยกระดับผลลัพธ์" },
-};
 
 export default function App() {
   const containerRef = useRef(null);
@@ -110,53 +87,26 @@ export default function App() {
     return () => obs.disconnect();
   }, []);
 
-  const [hovered,setHovered] = useState<number | null>(null);
-  const [tooltip,setTooltip] = useState<any>(null);
-  const [filterGrade,setFG]  = useState<number | null>(null);
+  const [hovered,setHovered] = useState(null);
+  const [tooltip,setTooltip] = useState(null);
+  const [filterGrade,setFG]  = useState(null);
   const [onlyRisk,setOnly]   = useState(false);
   const [selEmp,setSel]      = useState(null);
-  const [acts,setActs]       = useState<Record<number, string[]>>({});
+  const [acts,setActs]       = useState({});
   const [riskOpen,setRisk]   = useState(false);
-  const [saving,setSaving]   = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
-
-  // โหลด actions จาก DB ตอน mount
-  useEffect(() => {
-    fetch("/api/actions")
-      .then(r => r.json())
-      .then(data => {
-        // API คืน { "1": ["promote"], ... } key เป็น string แปลงเป็น number
-        const parsed: Record<number, string[]> = {};
-        for (const [k, v] of Object.entries(data)) {
-          parsed[Number(k)] = v as string[];
-        }
-        setActs(parsed);
-      })
-      .catch(() => {}); // fallback: ถ้า server ยังไม่ขึ้น ก็ใช้ state ว่างปล่าว
-  }, []);
 
   // responsive breakpoints
   const compact = cw < 700;
-
-  // font scale: 0.85 at 600px · 1.0 at 960px · 1.2 at 1280px+
-  const scale = Math.max(0.85, Math.min(cw / 960, 1.2));
-  const fs = (n: number) => Math.round(n * scale * 10) / 10;
-
-  // Pill uses fs so defined inside
-  const Pill = ({children, active, color, onClick}: any) => (
-    <button onClick={onClick} style={{padding:`${fs(4)}px ${fs(13)}px`,borderRadius:20,border:`1.5px solid ${active?color:"#3a4e7a"}`,background:active?color:"transparent",color:active?"#fff":C.sub,cursor:"pointer",fontSize:fs(11),fontWeight:active?700:500,transition:"all 0.15s",whiteSpace:"nowrap"}}>
-      {children}
-    </button>
-  );
+  const wide    = cw >= 960;
 
   // panel width scales with container
-  const PANEL_W  = selEmp ? (compact ? 0 : Math.min(260, cw * 0.28)) : 0;
+  const PANEL_W  = selEmp ? (compact ? 0 : Math.min(240, cw * 0.28)) : 0;
   const PANEL_GAP = selEmp && !compact ? 12 : 0;
 
   // SVG dimensions — fills available width
   const SVG_W  = cw - PANEL_W - PANEL_GAP;
-  const SVG_H  = Math.round((compact ? 420 : 500) * Math.max(0.9, Math.min(scale, 1.1)));
-  const PAD    = { top:32, right:20, bottom:50, left: compact ? 155 : Math.round(215 * Math.max(0.95, scale)) };
+  const SVG_H  = compact ? 420 : 500;
+  const PAD    = { top:32, right:20, bottom:50, left: compact ? 150 : 210 };
   const pW     = SVG_W - PAD.left - PAD.right;
   const pH     = SVG_H - PAD.top  - PAD.bottom;
 
@@ -166,91 +116,27 @@ export default function App() {
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
   const avgYears = (ALL_EMP.reduce((s,e)=>s+e.years,0)/ALL_EMP.length).toFixed(1);
-  const avgPerf  = (ALL_EMP.reduce((s,e)=>s+e.performance,0)/ALL_EMP.length).toFixed(2);
   const actioned = Object.keys(acts).filter(id=>acts[id]?.length>0).length;
   const topG     = Math.max(...atRisk.map(e=>e.grade));
-  const priorityGroups = {
-    P1: ALL_EMP.filter(e => getPriorityTier(e)==="P1"),
-    P2: ALL_EMP.filter(e => getPriorityTier(e)==="P2"),
-    P3: ALL_EMP.filter(e => getPriorityTier(e)==="P3"),
-  };
-  const urgentNow = priorityGroups.P1.length;
 
   let dots = filterGrade ? ALL_EMP.filter(e=>e.grade===filterGrade) : ALL_EMP;
   if (onlyRisk) dots = dots.filter(isAtRisk);
 
-  const toggle = (eid: number, key: string) => {
-    setActs(prev => {
-      const current = prev[eid] || [];
-      const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key];
-      const updated = { ...prev, [eid]: next };
-      // บันทึกลง DB
-      setSaving(true);
-      fetch(`/api/actions/${eid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actions: next }),
-      })
-        .finally(() => setSaving(false));
-      return updated;
-    });
-  };
-  const exportExcel = () => {
-    const today = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
-    const rows = ALL_EMP.map(e => {
-      const empActs = acts[e.id] || [];
-      const tier = getPriorityTier(e);
-      return {
-        "รหัสพนักงาน":        e.id,
-        "ชื่อ":               e.name,
-        "Sub-Grade":          e.subgrade,
-        "ตำแหน่ง":            SUBGRADES[e.yIdx].position,
-        "อายุงาน (ปี)":       e.years,
-        "Performance":        e.performance,
-        "Priority":           tier,
-        "กลุ่มน่าเป็นห่วง":    isAtRisk(e) ? "ใช่" : "-",
-        "เลื่อนตำแหน่ง":       empActs.includes("promote")    ? "✓" : "",
-        "วางแผน Succession":  empActs.includes("succession") ? "✓" : "",
-        "Retention Interview": empActs.includes("retention")  ? "✓" : "",
-        "Stretch Assignment":  empActs.includes("stretch")    ? "✓" : "",
-        "วัน Export":          today,
-      };
-    });
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // column widths
-    ws["!cols"] = [
-      { wch: 14 }, { wch: 18 }, { wch: 11 }, { wch: 22 },
-      { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 18 },
-      { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 16 },
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Action Plan");
-    XLSX.writeFile(wb, `action-plan-${new Date().toISOString().slice(0,10)}.xlsx`);
-  };
-
-  const onZoomChange = (z:number) => {
-    setZoomLevel(z);
-    applyZoom(z);
-  };
+  const toggle=(eid,key)=>setActs(p=>{const c=p[eid]||[];return{...p,[eid]:c.includes(key)?c.filter(k=>k!==key):[...c,key]};});
 
   const kpis=[
     {label:"พนักงานทั้งหมด",      val:ALL_EMP.length,  unit:"คน", sub:"ข้อมูล ณ ปัจจุบัน",           alert:false},
     {label:"กลุ่มน่าเป็นห่วง",   val:atRisk.length,   unit:"คน", sub:"อายุงาน ≥10 ปี · Grade 1–3",  alert:true},
     {label:"อัตราส่วน At-Risk",   val:`${(atRisk.length/ALL_EMP.length*100).toFixed(1)}`,unit:"%",sub:"ของพนักงานทั้งหมด",alert:true},
-    {label:"Performance เฉลี่ย",   val:avgPerf,         unit:"/5", sub:"ผลงานปีที่ผ่านมา",              alert:false},
-    {label:"Priority P1",         val:urgentNow,       unit:"คน", sub:"ควรเริ่ม Action ภายใน 30 วัน", alert:true},
     {label:"อายุงานเฉลี่ย",       val:avgYears,        unit:"ปี", sub:"ค่าเฉลี่ยองค์กร",               alert:false},
     {label:"ถูก Action แล้ว",     val:actioned,        unit:"คน", sub:`จาก ${atRisk.length} คน`,      alert:false},
     {label:"Grade สูงสุดที่เสี่ยง",val:`G${topG}`,    unit:"",   sub:SUBGRADES.find(s=>s.grade===topG)?.position||"", alert:true},
   ];
 
-  const kpiCols = compact ? 2 : 4;
+  const kpiCols = compact ? 3 : 6;
 
   return (
-    <div ref={containerRef} style={{background:`linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)`,minHeight:"100dvh",fontFamily:"'Sarabun',sans-serif",padding: compact?"16px 12px":"28px 24px",boxSizing:"border-box",overflowX:"hidden"}}>
+    <div ref={containerRef} style={{background:`linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)`,minHeight:"100vh",fontFamily:"'Sarabun',sans-serif",padding: compact?"16px 12px":"28px 24px",boxSizing:"border-box"}}>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 
       <div style={{maxWidth:1200,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
@@ -261,9 +147,9 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               <div style={{width:4,height:44,background:`linear-gradient(180deg,${C.orange},${C.blue})`,borderRadius:4,flexShrink:0}}/>
               <div>
-                <div style={{fontSize:fs(10),letterSpacing:3,color:C.gray,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>สกสว. · Human Resource Strategic Analytics</div>
-                <div style={{fontSize:compact?fs(17):fs(22),fontWeight:700,color:"#fff",lineHeight:1.2}}>ระบบวิเคราะห์เส้นทางสายอาชีพ</div>
-                {!compact&&<div style={{fontSize:fs(12.5),color:C.sub,marginTop:4,lineHeight:1.5}}>
+                <div style={{fontSize:9,letterSpacing:3,color:C.gray,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>สกสว. · Human Resource Strategic Analytics</div>
+                <div style={{fontSize:compact?17:21,fontWeight:700,color:"#fff",lineHeight:1.2}}>ระบบวิเคราะห์เส้นทางสายอาชีพ</div>
+                {!compact&&<div style={{fontSize:11.5,color:C.sub,marginTop:4,lineHeight:1.5}}>
                   Career Design Dashboard · อายุงาน × Sub-Grade · พนักงาน {ALL_EMP.length} คน ·{" "}
                   <span style={{color:C.orange,fontWeight:700}}>▲ = กลุ่มน่าเป็นห่วง</span>
                 </div>}
@@ -271,34 +157,9 @@ export default function App() {
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <div style={{background:C.orange,borderRadius:6,padding:"4px 12px",display:"inline-block",marginBottom:4}}>
-                <span style={{fontSize:fs(11),color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
+                <span style={{fontSize:10,color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
               </div>
-              <div style={{fontSize:fs(11),color:C.gray}}>มีนาคม 2569</div>
-              <div style={{marginTop:8,display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
-                {ZOOM_OPTIONS.map(z => (
-                  <button
-                    key={z}
-                    onClick={() => onZoomChange(z)}
-                    style={{
-                      border:`1px solid ${zoomLevel===z?C.orange:C.border}`,
-                      background:zoomLevel===z?C.orange:"transparent",
-                      color:zoomLevel===z?"#fff":C.sub,
-                      borderRadius:6,
-                      padding:"3px 7px",
-                      fontSize:fs(10),
-                      fontWeight:700,
-                      cursor:"pointer"
-                    }}
-                  >
-                    {Math.round(z*100)}%
-                  </button>
-                ))}
-              </div>
-              <div style={{marginTop:8}}>
-                <Link to="/executive-priority" style={{textDecoration:"none",display:"inline-block",background:"#fff",color:C.blue,padding:"6px 10px",borderRadius:8,fontSize:fs(11),fontWeight:700}}>
-                  Executive Priority
-                </Link>
-              </div>
+              <div style={{fontSize:10,color:C.gray}}>มีนาคม 2569</div>
             </div>
           </div>
         </div>
@@ -306,17 +167,17 @@ export default function App() {
         {/* ── KPI CARDS ── */}
         <div style={{display:"grid",gridTemplateColumns:`repeat(${kpiCols},1fr)`,gap:10}}>
           {kpis.map((k,i)=>(
-            <div key={i} style={{background:"#ffffff",borderRadius:10,padding:"14px 13px",
-              borderTop:`3px solid ${k.alert?C.orange:C.blue}`,
+            <div key={i} style={{background:C.surface,borderRadius:10,padding:"14px 13px",
+              borderTop:`3px solid ${k.alert?C.orange:C.blueLight}`,
               boxShadow:"0 2px 8px rgba(0,0,0,0.15)",transition:"transform 0.15s,box-shadow 0.15s",cursor:"default"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 18px rgba(0,0,0,0.25)";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.15)";}}>
-              <div style={{fontSize:fs(10),color:"#939598",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,marginBottom:6,lineHeight:1.4}}>{k.label}</div>
+              <div style={{fontSize:9,color:C.gray,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,marginBottom:6,lineHeight:1.4}}>{k.label}</div>
               <div style={{display:"flex",alignItems:"baseline",gap:3,marginBottom:4}}>
-                <span style={{fontSize:compact?fs(20):fs(27),fontWeight:700,color:k.alert?C.orange:C.blue,lineHeight:1}}>{k.val}</span>
-                {k.unit&&<span style={{fontSize:fs(12),color:k.alert?C.orange:C.blue,fontWeight:600}}>{k.unit}</span>}
+                <span style={{fontSize:compact?20:26,fontWeight:700,color:k.alert?C.orange:"#fff",lineHeight:1}}>{k.val}</span>
+                {k.unit&&<span style={{fontSize:11,color:k.alert?C.orange:C.sub,fontWeight:600}}>{k.unit}</span>}
               </div>
-              <div style={{fontSize:fs(10),color:"#939598",lineHeight:1.4}}>{k.sub}</div>
+              <div style={{fontSize:9,color:C.gray,lineHeight:1.4}}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -325,21 +186,21 @@ export default function App() {
         <div>
           <button onClick={()=>setRisk(p=>!p)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:C.surface,border:`1px solid ${riskOpen?C.orange:C.border}`,borderRadius:riskOpen?"10px 10px 0 0":"10px",padding:"11px 16px",cursor:"pointer",transition:"border-color 0.18s",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
             <div style={{width:22,height:22,borderRadius:6,background:riskOpen?C.orange:`${C.orange}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <span style={{fontSize:fs(13),color:riskOpen?"#fff":C.orange}}>⚠</span>
+              <span style={{fontSize:12,color:riskOpen?"#fff":C.orange}}>⚠</span>
             </div>
-            <span style={{fontSize:fs(13),fontWeight:700,color:"#fff",flex:1,textAlign:"left"}}>ความเสี่ยง 3 ด้านที่ผู้บริหารควรทราบ</span>
-            <span style={{fontSize:fs(13),color:C.orange,display:"inline-block",transform:riskOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+            <span style={{fontSize:12,fontWeight:700,color:"#fff",flex:1,textAlign:"left"}}>ความเสี่ยง 3 ด้านที่ผู้บริหารควรทราบ</span>
+            <span style={{fontSize:12,color:C.orange,display:"inline-block",transform:riskOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
           </button>
           {riskOpen&&(
             <div style={{background:C.surface,border:`1px solid ${C.orange}`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:"16px",display:"grid",gridTemplateColumns:compact?"1fr":"repeat(3,1fr)",gap:12,boxShadow:"0 4px 12px rgba(0,0,0,0.15)"}}>
               {RISK_ITEMS.map((r,i)=>(
                 <div key={i} style={{background:"#1a2644",borderRadius:8,padding:"13px 14px",borderLeft:`3px solid ${r.color}`}}>
-                  <div style={{fontSize:fs(13),fontWeight:700,color:"#fff",marginBottom:6}}>{r.icon} {r.title}</div>
-                  <div style={{fontSize:fs(12),color:C.sub,lineHeight:1.7}}>{r.body}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#fff",marginBottom:6}}>{r.icon} {r.title}</div>
+                  <div style={{fontSize:11,color:C.sub,lineHeight:1.7}}>{r.body}</div>
                 </div>
               ))}
               <div style={{gridColumn:"1/-1",background:"#1a2644",borderRadius:7,padding:"10px 14px",borderLeft:`3px solid ${C.blue}`}}>
-                <span style={{fontSize:fs(12),color:C.sub,lineHeight:1.6}}><b style={{color:"#fff"}}>แนวทางเชิงระบบ:</b> กำหนด "อายุงานสูงสุดต่อ Sub-Grade" เป็น policy — หากพนักงานอยู่ Sub-Grade เดิมเกิน threshold ให้มี Review บังคับ เพื่อป้องกัน Career Stagnation</span>
+                <span style={{fontSize:11,color:C.sub,lineHeight:1.6}}><b style={{color:"#fff"}}>แนวทางเชิงระบบ:</b> กำหนด "อายุงานสูงสุดต่อ Sub-Grade" เป็น policy — หากพนักงานอยู่ Sub-Grade เดิมเกิน threshold ให้มี Review บังคับ เพื่อป้องกัน Career Stagnation</span>
               </div>
             </div>
           )}
@@ -347,7 +208,7 @@ export default function App() {
 
         {/* ── FILTER BAR ── */}
         <div style={{background:C.surface,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.12)",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-          <span style={{fontSize:fs(12),color:C.gray,fontWeight:600,marginRight:2}}>Grade</span>
+          <span style={{fontSize:11,color:C.gray,fontWeight:600,marginRight:2}}>Grade</span>
           <Pill active={!filterGrade} color={C.blue} onClick={()=>setFG(null)}>ทั้งหมด</Pill>
           {[1,2,3,4,5,6].map(g=>(
             <Pill key={g} active={filterGrade===g} color={GRADE_DOT[g]} onClick={()=>setFG(filterGrade===g?null:g)}>G{g}</Pill>
@@ -355,13 +216,13 @@ export default function App() {
           <div style={{width:1,height:18,background:C.border,margin:"0 2px"}}/>
           <Pill active={onlyRisk} color={C.orange} onClick={()=>setOnly(p=>!p)}>▲ กลุ่มเสี่ยง</Pill>
           <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
               <svg width="12" height="11"><polygon points="6,1 11,10 1,10" fill={C.orange}/></svg>น่าเป็นห่วง
             </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
               <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={C.blueLight} fillOpacity={0.8}/></svg>ทั่วไป
             </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
               <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1a7340"/></svg>Action แล้ว
             </span>
           </div>
@@ -371,8 +232,7 @@ export default function App() {
         <div style={{display:"flex",gap:PANEL_GAP,alignItems:"flex-start"}}>
 
           {/* Chart */}
-          <div
-            style={{flex:1,minWidth:0,background:"#ffffff",borderRadius:12,padding:"20px 14px 10px",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",border:"1px solid #e0e4f0",position:"relative"}}>
+          <div style={{flex:1,minWidth:0,background:"#ffffff",borderRadius:12,padding:"20px 14px 10px",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",border:"1px solid #e0e4f0",position:"relative"}}>
             <svg width="100%" height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{display:"block",overflow:"visible"}}>
               <g transform={`translate(${PAD.left},${PAD.top})`}>
 
@@ -401,8 +261,8 @@ export default function App() {
                   const yT=ySc(i3A)-step*0.5, yB=ySc(i1A)+step*0.5;
                   return <>
                     <rect x={xSc(10)} y={yT} width={pW-xSc(10)} height={yB-yT} fill={C.orange} fillOpacity={0.07} rx={2}/>
-                    <text x={xSc(10)+7} y={yT+fs(12)} fontSize={fs(11)} fill={C.orange} fontWeight={700}>⚠ Zone น่าเป็นห่วง</text>
-                    <text x={xSc(10)+2} y={-12} fontSize={fs(12)} fill={C.orange} fontWeight={700}>10 ปี</text>
+                    <text x={xSc(10)+7} y={yT+14} fontSize={9} fill={C.orange} fontWeight={700}>⚠ Zone น่าเป็นห่วง</text>
+                    <text x={xSc(10)+2} y={-12} fontSize={10} fill={C.orange} fontWeight={700}>10 ปี</text>
                   </>;
                 })()}
 
@@ -431,23 +291,23 @@ export default function App() {
                 {/* x axis */}
                 {xTicks.map(t=>(
                   <g key={t} transform={`translate(${xSc(t)},${pH})`}>
-                    <line y1={0} y2={5} stroke="#939598" strokeWidth={1}/>
-                    <text y={fs(20)} textAnchor="middle" fontSize={fs(15)} fontWeight={600} fill="#1a1a2e">{t}</text>
+                    <line y1={0} y2={4} stroke="#939598" strokeWidth={0.8}/>
+                    <text y={15} textAnchor="middle" fontSize={10} fill="#5a6175">{t}</text>
                   </g>
                 ))}
-                <text x={pW/2} y={pH+fs(42)} textAnchor="middle" fontSize={fs(15)} fontWeight={600} fill="#1a1a2e" fontStyle="italic">อายุงาน (ปี)</text>
+                <text x={pW/2} y={pH+40} textAnchor="middle" fontSize={11} fill="#5a6175" fontStyle="italic">อายุงาน (ปี)</text>
 
                 {/* y axis */}
                 {SUBGRADES.map((sg,i)=>{
                   const cnt=ALL_EMP.filter(e=>e.subgrade===sg.key).length;
-                  const isHigh=sg.grade>=5;
+                  const isHigh=sg.grade>=4;
                   return (
                     <g key={sg.key} transform={`translate(0,${ySc(i)})`}>
                       <line x1={-4} x2={0} stroke="#939598" strokeWidth={0.8}/>
-                      <rect x={-PAD.left+4} y={-9} width={fs(26)} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
-                      <text x={-PAD.left+fs(17)} y={4} textAnchor="middle" fontSize={fs(13)} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
-                      {!compact&&<text x={-PAD.left+fs(36)} y={4} textAnchor="start" fontSize={fs(13)} fill="#5a6175">{sg.position}</text>}
-                      <text x={-7} y={4} textAnchor="end" fontSize={fs(12)} fill="#939598">({cnt})</text>
+                      <rect x={-PAD.left+4} y={-9} width={26} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
+                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={10} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
+                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={9} fill="#5a6175">{sg.position}</text>}
+                      <text x={-7} y={4} textAnchor="end" fontSize={9} fill="#939598">({cnt})</text>
                     </g>
                   );
                 })}
@@ -460,27 +320,23 @@ export default function App() {
             {/* tooltip */}
             {tooltip&&!selEmp&&(
               <div style={{position:"absolute",
-                left:Math.min(Math.max(tooltip.cx + PAD.left + 12, 8), SVG_W - 210),
-                top:Math.max(tooltip.cy + PAD.top - 28, 8),
+                left:Math.min(tooltip.cx+PAD.left+14, SVG_W-185),
+                top:Math.max(tooltip.cy+PAD.top-44, 8),
                 background:C.blueDark,borderRadius:8,padding:"10px 14px",
-                fontSize:fs(12),color:"#eef1f8",pointerEvents:"none",zIndex:10,
-                boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:180,
+                fontSize:11,color:"#eef1f8",pointerEvents:"none",zIndex:10,
+                boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:170,
                 border:`1px solid ${isAtRisk(tooltip.e)?C.orange:C.blueLight}`}}>
-                <div style={{fontWeight:700,color:"#fff",marginBottom:4,fontSize:fs(13)}}>{tooltip.e.name}</div>
-                {isAtRisk(tooltip.e)&&<div style={{display:"inline-block",background:`${C.orange}30`,color:C.orange,fontSize:fs(11),fontWeight:700,borderRadius:4,padding:"2px 7px",marginBottom:6}}>▲ กลุ่มน่าเป็นห่วง</div>}
+                <div style={{fontWeight:700,color:"#fff",marginBottom:4}}>{tooltip.e.name}</div>
+                {isAtRisk(tooltip.e)&&<div style={{display:"inline-block",background:`${C.orange}30`,color:C.orange,fontSize:9.5,fontWeight:700,borderRadius:4,padding:"2px 7px",marginBottom:6}}>▲ กลุ่มน่าเป็นห่วง</div>}
                 <div style={{color:"#aab3cc",marginBottom:2}}>Sub-Grade: <b style={{color:"#fff"}}>{tooltip.e.subgrade}</b></div>
-                <div style={{color:"#aab3cc",marginBottom:6,fontSize:fs(11)}}>{SUBGRADES[tooltip.e.yIdx].position}</div>
-                <div style={{color:C.orange,fontWeight:700,fontSize:fs(16)}}>{tooltip.e.years} <span style={{fontSize:fs(12),color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
-                <div style={{color:"#60a5fa",fontWeight:700,fontSize:fs(12),marginTop:3}}>Performance: {tooltip.e.performance}/5</div>
-                <div style={{marginTop:4,fontSize:fs(10),fontWeight:700,color:PRIORITY_META[getPriorityTier(tooltip.e)].color}}>{PRIORITY_META[getPriorityTier(tooltip.e)].label}</div>
-                <div style={{marginTop:4,fontSize:fs(10),color:"#aab3cc"}}>เกณฑ์ P1: Top 5 จาก Grade ≤ 3 และอายุงาน ≥ 10 ปี โดยเรียง Perf สูงก่อน</div>
-                <div style={{fontSize:fs(10),color:"#aab3cc"}}>สถานะ: {P1_IDS.has(tooltip.e.id)?"✓ อยู่ใน Top 5 P1":"✕ ยังไม่อยู่ใน Top 5 P1"}</div>
-                <div style={{color:"#555e7a",fontSize:fs(10),marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
+                <div style={{color:"#aab3cc",marginBottom:6,fontSize:10}}>{SUBGRADES[tooltip.e.yIdx].position}</div>
+                <div style={{color:C.orange,fontWeight:700,fontSize:15}}>{tooltip.e.years} <span style={{fontSize:11,color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
+                <div style={{color:"#555e7a",fontSize:9,marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
               </div>
             )}
           </div>
 
-          {/* Action Panel */}
+          {/* Action Panel — overlay on mobile, side on desktop */}
           {selEmp&&(
             <div style={{
               width: compact ? "100%" : PANEL_W,
@@ -494,24 +350,19 @@ export default function App() {
               <div style={{background:isAtRisk(selEmp)?`${C.orange}20`:`${C.blue}30`,padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
-                    <div style={{fontWeight:700,color:"#fff",fontSize:fs(14),marginBottom:2}}>{selEmp.name}</div>
-                    <div style={{fontSize:fs(12),color:isAtRisk(selEmp)?C.orange:C.sub,fontWeight:700}}>Sub-Grade: {selEmp.subgrade}</div>
-                    <div style={{fontSize:fs(12),color:C.gray,marginTop:1}}>{SUBGRADES[selEmp.yIdx].position}</div>
+                    <div style={{fontWeight:700,color:"#fff",fontSize:13,marginBottom:2}}>{selEmp.name}</div>
+                    <div style={{fontSize:11,color:isAtRisk(selEmp)?C.orange:C.sub,fontWeight:700}}>Sub-Grade: {selEmp.subgrade}</div>
+                    <div style={{fontSize:10.5,color:C.gray,marginTop:1}}>{SUBGRADES[selEmp.yIdx].position}</div>
                   </div>
-                  <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.gray,fontSize:fs(18),padding:0,lineHeight:1}}>✕</button>
+                  <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.gray,fontSize:18,padding:0,lineHeight:1}}>✕</button>
                 </div>
                 <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
-                  <span style={{fontSize:fs(12),color:C.orange,fontWeight:700,background:`${C.orange}25`,padding:"3px 9px",borderRadius:20}}>⏱ {selEmp.years} ปี</span>
-                  <span style={{fontSize:fs(12),color:"#93c5fd",fontWeight:700,background:"#1e3a8a40",padding:"3px 9px",borderRadius:20}}>📊 {selEmp.performance}/5</span>
-                  <span style={{fontSize:fs(12),color:PRIORITY_META[getPriorityTier(selEmp)].color,fontWeight:700,background:PRIORITY_META[getPriorityTier(selEmp)].bg,padding:"3px 9px",borderRadius:20}}>{PRIORITY_META[getPriorityTier(selEmp)].label}</span>
-                  {isAtRisk(selEmp)&&<span style={{fontSize:fs(12),color:"#fca5a5",fontWeight:700,background:"#b91c1c40",padding:"3px 9px",borderRadius:20}}>▲ น่าเป็นห่วง</span>}
+                  <span style={{fontSize:11,color:C.orange,fontWeight:700,background:`${C.orange}25`,padding:"3px 9px",borderRadius:20}}>⏱ {selEmp.years} ปี</span>
+                  {isAtRisk(selEmp)&&<span style={{fontSize:11,color:"#fca5a5",fontWeight:700,background:"#b91c1c40",padding:"3px 9px",borderRadius:20}}>▲ น่าเป็นห่วง</span>}
                 </div>
               </div>
               <div style={{padding:"14px 16px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                  <div style={{fontSize:fs(12),fontWeight:700,color:"#fff"}}>Action Plan สำหรับผู้บริหาร</div>
-                  {saving && <span style={{fontSize:fs(10),color:C.orange,fontWeight:600}}>กำลังบันทึก...</span>}
-                </div>
+                <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:10}}>Action Plan สำหรับผู้บริหาร</div>
                 <div style={{display:"flex",flexDirection:"column",gap:7}}>
                   {ACTION_TAGS.map(a=>{
                     const checked=(acts[selEmp.id]||[]).includes(a.key);
@@ -523,35 +374,20 @@ export default function App() {
                         <div style={{width:16,height:16,borderRadius:4,flexShrink:0,border:`1.5px solid ${checked?a.color:"#3a4e7a"}`,background:checked?a.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
                           {checked&&<svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </div>
-                        <span style={{fontSize:fs(12),color:checked?a.color:C.sub,fontWeight:checked?700:400}}>{a.label}</span>
+                        <span style={{fontSize:11,color:checked?a.color:C.sub,fontWeight:checked?700:400}}>{a.label}</span>
                       </div>
                     );
                   })}
                 </div>
                 {(acts[selEmp.id]||[]).length>0&&(
                   <div style={{marginTop:12,padding:"9px 11px",background:"#1a2644",borderRadius:7,border:`1px solid ${C.border}`}}>
-                    <div style={{fontSize:fs(11),fontWeight:700,color:"#fff",marginBottom:5}}>✅ Action ที่เลือก</div>
-                    {(acts[selEmp.id]||[]).map(k=>{const a=ACTION_TAGS.find(x=>x.key===k);return <div key={k} style={{fontSize:fs(12),color:a.color,fontWeight:600,marginBottom:2}}>· {a.label}</div>;})}
+                    <div style={{fontSize:10,fontWeight:700,color:"#fff",marginBottom:5}}>✅ Action ที่เลือก</div>
+                    {(acts[selEmp.id]||[]).map(k=>{const a=ACTION_TAGS.find(x=>x.key===k);return <div key={k} style={{fontSize:11,color:a.color,fontWeight:600,marginBottom:2}}>· {a.label}</div>;})}
                   </div>
                 )}
               </div>
             </div>
           )}
-        </div>
-
-        <div style={{background:C.surface,borderRadius:10,padding:"14px 16px",border:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-          <div>
-            <div style={{fontSize:fs(12),fontWeight:700,color:"#fff"}}>Executive Priority View</div>
-            <div style={{fontSize:fs(10),color:C.sub,marginTop:3}}>เปิดหน้าวิเคราะห์ลำดับ Action จากอายุงาน + ผลงานปีที่ผ่านมา</div>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button onClick={exportExcel} style={{background:"#1a7340",border:"none",color:"#fff",padding:"8px 14px",borderRadius:8,fontSize:fs(11),fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:fs(13)}}>⬇</span> ส่งออก Excel
-            </button>
-            <Link to="/executive-priority" style={{textDecoration:"none",background:C.orange,color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:fs(11),fontWeight:700,whiteSpace:"nowrap"}}>
-              ไปหน้า Executive Priority
-            </Link>
-          </div>
         </div>
 
         {/* ── GRADE SUMMARY ── */}
@@ -562,17 +398,17 @@ export default function App() {
             const pct=(cnt/ALL_EMP.length*100).toFixed(0);
             return (
               <div key={g} style={{background:C.surface,borderRadius:8,padding:"11px 12px",borderTop:`3px solid ${g>=5?C.orange:C.blueLight}`,boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
-                <div style={{fontSize:fs(10),color:C.gray,fontWeight:700,letterSpacing:0.5,marginBottom:4}}>GRADE {g}</div>
-                <div style={{fontSize:compact?fs(18):fs(23),fontWeight:700,color:g>=5?C.orange:"#fff",lineHeight:1.15}}>{cnt}</div>
-                <div style={{fontSize:fs(10),color:C.gray,marginBottom:2}}>{pct}%</div>
-                {rCnt>0&&<div style={{fontSize:fs(11),color:C.orange,fontWeight:700}}>▲ {rCnt}</div>}
+                <div style={{fontSize:9,color:C.gray,fontWeight:700,letterSpacing:0.5,marginBottom:4}}>GRADE {g}</div>
+                <div style={{fontSize:compact?18:22,fontWeight:700,color:g>=5?C.orange:"#fff",lineHeight:1.15}}>{cnt}</div>
+                <div style={{fontSize:9,color:C.gray,marginBottom:2}}>{pct}%</div>
+                {rCnt>0&&<div style={{fontSize:10,color:C.orange,fontWeight:700}}>▲ {rCnt}</div>}
               </div>
             );
           })}
         </div>
 
         {/* caption */}
-        <div style={{fontSize:fs(11),color:C.gray,lineHeight:1.7,padding:"8px 14px",background:C.surface,borderRadius:6,border:`1px solid ${C.border}`}}>
+        <div style={{fontSize:10,color:C.gray,lineHeight:1.7,padding:"8px 14px",background:C.surface,borderRadius:6,border:`1px solid ${C.border}`}}>
           <b style={{color:C.sub}}>หมายเหตุ:</b> แต่ละจุดแทนพนักงาน 1 คน · ● น้ำเงิน = พนักงานทั่วไป · ▲ ส้ม = กลุ่มน่าเป็นห่วง (อายุงาน ≥ 10 ปี · Grade 1–3) · ● เขียว = ถูก Action แล้ว · เส้นประส้ม = เกณฑ์ 10 ปี
         </div>
 
