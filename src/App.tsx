@@ -80,12 +80,12 @@ function generateEmployees() {
 const ALL_EMP = generateEmployees();
 const isAtRisk = e => e.years>=10 && e.grade<=3;
 const getPriorityTier = (e) => {
-  if (e.years >= 10 && e.performance >= 4.2) return "P1";
-  if ((e.years >= 8 && e.performance >= 3.6) || (e.years >= 10 && e.performance >= 3.3)) return "P2";
+  if (e.years >= 10 && e.performance >= 4.2 && e.grade <= 3) return "P1";
+  if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
   return "P3";
 };
 const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Performance สูง + Tenure สูง" },
+  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
   P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", note: "พร้อมเติบโตต่อในระยะกลาง" },
   P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", note: "ติดตามและยกระดับผลลัพธ์" },
 };

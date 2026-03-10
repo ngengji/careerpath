@@ -61,7 +61,7 @@ const YEAR_RANGE: Record<string, [number, number]> = {
 };
 
 const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", action: "เตรียม succession และบทบาทใหญ่ทันที" },
+  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", action: "Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
   P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", action: "วางแผนเร่งพัฒนาเพื่อขึ้นกลุ่มนำ" },
   P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและยกระดับ performance" },
 };
@@ -116,8 +116,8 @@ function generateEmployees() {
 const ALL_EMP = generateEmployees();
 
 const getPriorityTier = (e: Employee) => {
-  if (e.years >= 10 && e.performance >= 4.2) return "P1";
-  if ((e.years >= 8 && e.performance >= 3.6) || (e.years >= 10 && e.performance >= 3.3)) return "P2";
+  if (e.years >= 10 && e.performance >= 4.2 && e.grade <= 3) return "P1";
+  if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
   return "P3";
 };
 
@@ -189,7 +189,7 @@ export default function ExecutivePriorityPage() {
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Priority Matrix: อายุงาน x Performance ปีล่าสุด</div>
-              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = tenure สูง + performance สูง</div>
+              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = tenure สูง + performance สูง + ตำแหน่งต่ำ</div>
             </div>
             {(() => {
               const W = 420;
