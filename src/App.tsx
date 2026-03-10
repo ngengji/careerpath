@@ -69,12 +69,6 @@ function generateEmployees() {
 const ALL_EMP = generateEmployees();
 const isAtRisk = e => e.years>=10 && e.grade<=3;
 
-const Pill = ({children,active,color,onClick}) => (
-  <button onClick={onClick} style={{padding:"4px 13px",borderRadius:20,border:`1.5px solid ${active?color:"#3a4e7a"}`,background:active?color:"transparent",color:active?"#fff":C.sub,cursor:"pointer",fontSize:11,fontWeight:active?700:500,transition:"all 0.15s",whiteSpace:"nowrap"}}>
-    {children}
-  </button>
-);
-
 export default function App() {
   const containerRef = useRef(null);
   const [cw, setCw] = useState(900);
@@ -97,16 +91,26 @@ export default function App() {
 
   // responsive breakpoints
   const compact = cw < 700;
-  const wide    = cw >= 960;
+
+  // font scale: 0.85 at 600px · 1.0 at 960px · 1.2 at 1280px+
+  const scale = Math.max(0.85, Math.min(cw / 960, 1.2));
+  const fs = (n: number) => Math.round(n * scale * 10) / 10;
+
+  // Pill uses fs so defined inside
+  const Pill = ({children, active, color, onClick}: any) => (
+    <button onClick={onClick} style={{padding:`${fs(4)}px ${fs(13)}px`,borderRadius:20,border:`1.5px solid ${active?color:"#3a4e7a"}`,background:active?color:"transparent",color:active?"#fff":C.sub,cursor:"pointer",fontSize:fs(11),fontWeight:active?700:500,transition:"all 0.15s",whiteSpace:"nowrap"}}>
+      {children}
+    </button>
+  );
 
   // panel width scales with container
-  const PANEL_W  = selEmp ? (compact ? 0 : Math.min(240, cw * 0.28)) : 0;
+  const PANEL_W  = selEmp ? (compact ? 0 : Math.min(260, cw * 0.28)) : 0;
   const PANEL_GAP = selEmp && !compact ? 12 : 0;
 
   // SVG dimensions — fills available width
   const SVG_W  = cw - PANEL_W - PANEL_GAP;
-  const SVG_H  = compact ? 420 : 500;
-  const PAD    = { top:32, right:20, bottom:50, left: compact ? 150 : 210 };
+  const SVG_H  = Math.round((compact ? 420 : 500) * Math.max(0.9, Math.min(scale, 1.1)));
+  const PAD    = { top:32, right:20, bottom:50, left: compact ? 155 : Math.round(215 * Math.max(0.95, scale)) };
   const pW     = SVG_W - PAD.left - PAD.right;
   const pH     = SVG_H - PAD.top  - PAD.bottom;
 
@@ -147,9 +151,9 @@ export default function App() {
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               <div style={{width:4,height:44,background:`linear-gradient(180deg,${C.orange},${C.blue})`,borderRadius:4,flexShrink:0}}/>
               <div>
-                <div style={{fontSize:9,letterSpacing:3,color:C.gray,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>สกสว. · Human Resource Strategic Analytics</div>
-                <div style={{fontSize:compact?17:21,fontWeight:700,color:"#fff",lineHeight:1.2}}>ระบบวิเคราะห์เส้นทางสายอาชีพ</div>
-                {!compact&&<div style={{fontSize:11.5,color:C.sub,marginTop:4,lineHeight:1.5}}>
+                <div style={{fontSize:fs(10),letterSpacing:3,color:C.gray,fontWeight:700,textTransform:"uppercase",marginBottom:4}}>สกสว. · Human Resource Strategic Analytics</div>
+                <div style={{fontSize:compact?fs(17):fs(22),fontWeight:700,color:"#fff",lineHeight:1.2}}>ระบบวิเคราะห์เส้นทางสายอาชีพ</div>
+                {!compact&&<div style={{fontSize:fs(12.5),color:C.sub,marginTop:4,lineHeight:1.5}}>
                   Career Design Dashboard · อายุงาน × Sub-Grade · พนักงาน {ALL_EMP.length} คน ·{" "}
                   <span style={{color:C.orange,fontWeight:700}}>▲ = กลุ่มน่าเป็นห่วง</span>
                 </div>}
@@ -157,9 +161,9 @@ export default function App() {
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <div style={{background:C.orange,borderRadius:6,padding:"4px 12px",display:"inline-block",marginBottom:4}}>
-                <span style={{fontSize:10,color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
+                <span style={{fontSize:fs(11),color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
               </div>
-              <div style={{fontSize:10,color:C.gray}}>มีนาคม 2569</div>
+              <div style={{fontSize:fs(11),color:C.gray}}>มีนาคม 2569</div>
             </div>
           </div>
         </div>
@@ -172,12 +176,12 @@ export default function App() {
               boxShadow:"0 2px 8px rgba(0,0,0,0.15)",transition:"transform 0.15s,box-shadow 0.15s",cursor:"default"}}
               onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 6px 18px rgba(0,0,0,0.25)";}}
               onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.15)";}}>
-              <div style={{fontSize:9,color:"#939598",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,marginBottom:6,lineHeight:1.4}}>{k.label}</div>
+              <div style={{fontSize:fs(10),color:"#939598",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,marginBottom:6,lineHeight:1.4}}>{k.label}</div>
               <div style={{display:"flex",alignItems:"baseline",gap:3,marginBottom:4}}>
-                <span style={{fontSize:compact?20:26,fontWeight:700,color:k.alert?C.orange:C.blue,lineHeight:1}}>{k.val}</span>
-                {k.unit&&<span style={{fontSize:11,color:k.alert?C.orange:C.blue,fontWeight:600}}>{k.unit}</span>}
+                <span style={{fontSize:compact?fs(20):fs(27),fontWeight:700,color:k.alert?C.orange:C.blue,lineHeight:1}}>{k.val}</span>
+                {k.unit&&<span style={{fontSize:fs(12),color:k.alert?C.orange:C.blue,fontWeight:600}}>{k.unit}</span>}
               </div>
-              <div style={{fontSize:9,color:"#939598",lineHeight:1.4}}>{k.sub}</div>
+              <div style={{fontSize:fs(10),color:"#939598",lineHeight:1.4}}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -186,21 +190,21 @@ export default function App() {
         <div>
           <button onClick={()=>setRisk(p=>!p)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:C.surface,border:`1px solid ${riskOpen?C.orange:C.border}`,borderRadius:riskOpen?"10px 10px 0 0":"10px",padding:"11px 16px",cursor:"pointer",transition:"border-color 0.18s",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
             <div style={{width:22,height:22,borderRadius:6,background:riskOpen?C.orange:`${C.orange}30`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <span style={{fontSize:12,color:riskOpen?"#fff":C.orange}}>⚠</span>
+              <span style={{fontSize:fs(13),color:riskOpen?"#fff":C.orange}}>⚠</span>
             </div>
-            <span style={{fontSize:12,fontWeight:700,color:"#fff",flex:1,textAlign:"left"}}>ความเสี่ยง 3 ด้านที่ผู้บริหารควรทราบ</span>
-            <span style={{fontSize:12,color:C.orange,display:"inline-block",transform:riskOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+            <span style={{fontSize:fs(13),fontWeight:700,color:"#fff",flex:1,textAlign:"left"}}>ความเสี่ยง 3 ด้านที่ผู้บริหารควรทราบ</span>
+            <span style={{fontSize:fs(13),color:C.orange,display:"inline-block",transform:riskOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
           </button>
           {riskOpen&&(
             <div style={{background:C.surface,border:`1px solid ${C.orange}`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:"16px",display:"grid",gridTemplateColumns:compact?"1fr":"repeat(3,1fr)",gap:12,boxShadow:"0 4px 12px rgba(0,0,0,0.15)"}}>
               {RISK_ITEMS.map((r,i)=>(
                 <div key={i} style={{background:"#1a2644",borderRadius:8,padding:"13px 14px",borderLeft:`3px solid ${r.color}`}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#fff",marginBottom:6}}>{r.icon} {r.title}</div>
-                  <div style={{fontSize:11,color:C.sub,lineHeight:1.7}}>{r.body}</div>
+                  <div style={{fontSize:fs(13),fontWeight:700,color:"#fff",marginBottom:6}}>{r.icon} {r.title}</div>
+                  <div style={{fontSize:fs(12),color:C.sub,lineHeight:1.7}}>{r.body}</div>
                 </div>
               ))}
               <div style={{gridColumn:"1/-1",background:"#1a2644",borderRadius:7,padding:"10px 14px",borderLeft:`3px solid ${C.blue}`}}>
-                <span style={{fontSize:11,color:C.sub,lineHeight:1.6}}><b style={{color:"#fff"}}>แนวทางเชิงระบบ:</b> กำหนด "อายุงานสูงสุดต่อ Sub-Grade" เป็น policy — หากพนักงานอยู่ Sub-Grade เดิมเกิน threshold ให้มี Review บังคับ เพื่อป้องกัน Career Stagnation</span>
+                <span style={{fontSize:fs(12),color:C.sub,lineHeight:1.6}}><b style={{color:"#fff"}}>แนวทางเชิงระบบ:</b> กำหนด "อายุงานสูงสุดต่อ Sub-Grade" เป็น policy — หากพนักงานอยู่ Sub-Grade เดิมเกิน threshold ให้มี Review บังคับ เพื่อป้องกัน Career Stagnation</span>
               </div>
             </div>
           )}
@@ -208,7 +212,7 @@ export default function App() {
 
         {/* ── FILTER BAR ── */}
         <div style={{background:C.surface,borderRadius:10,padding:"10px 14px",border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.12)",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-          <span style={{fontSize:11,color:C.gray,fontWeight:600,marginRight:2}}>Grade</span>
+          <span style={{fontSize:fs(12),color:C.gray,fontWeight:600,marginRight:2}}>Grade</span>
           <Pill active={!filterGrade} color={C.blue} onClick={()=>setFG(null)}>ทั้งหมด</Pill>
           {[1,2,3,4,5,6].map(g=>(
             <Pill key={g} active={filterGrade===g} color={GRADE_DOT[g]} onClick={()=>setFG(filterGrade===g?null:g)}>G{g}</Pill>
@@ -216,13 +220,13 @@ export default function App() {
           <div style={{width:1,height:18,background:C.border,margin:"0 2px"}}/>
           <Pill active={onlyRisk} color={C.orange} onClick={()=>setOnly(p=>!p)}>▲ กลุ่มเสี่ยง</Pill>
           <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
               <svg width="12" height="11"><polygon points="6,1 11,10 1,10" fill={C.orange}/></svg>น่าเป็นห่วง
             </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
               <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={C.blueLight} fillOpacity={0.8}/></svg>ทั่วไป
             </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.sub}}>
+            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
               <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1a7340"/></svg>Action แล้ว
             </span>
           </div>
@@ -261,8 +265,8 @@ export default function App() {
                   const yT=ySc(i3A)-step*0.5, yB=ySc(i1A)+step*0.5;
                   return <>
                     <rect x={xSc(10)} y={yT} width={pW-xSc(10)} height={yB-yT} fill={C.orange} fillOpacity={0.07} rx={2}/>
-                    <text x={xSc(10)+7} y={yT+14} fontSize={9} fill={C.orange} fontWeight={700}>⚠ Zone น่าเป็นห่วง</text>
-                    <text x={xSc(10)+2} y={-12} fontSize={10} fill={C.orange} fontWeight={700}>10 ปี</text>
+                    <text x={xSc(10)+7} y={yT+fs(12)} fontSize={fs(11)} fill={C.orange} fontWeight={700}>⚠ Zone น่าเป็นห่วง</text>
+                    <text x={xSc(10)+2} y={-12} fontSize={fs(12)} fill={C.orange} fontWeight={700}>10 ปี</text>
                   </>;
                 })()}
 
@@ -292,10 +296,10 @@ export default function App() {
                 {xTicks.map(t=>(
                   <g key={t} transform={`translate(${xSc(t)},${pH})`}>
                     <line y1={0} y2={4} stroke="#939598" strokeWidth={0.8}/>
-                    <text y={15} textAnchor="middle" fontSize={10} fill="#5a6175">{t}</text>
+                    <text y={fs(16)} textAnchor="middle" fontSize={fs(12)} fill="#5a6175">{t}</text>
                   </g>
                 ))}
-                <text x={pW/2} y={pH+40} textAnchor="middle" fontSize={11} fill="#5a6175" fontStyle="italic">อายุงาน (ปี)</text>
+                <text x={pW/2} y={pH+fs(38)} textAnchor="middle" fontSize={fs(13)} fill="#5a6175" fontStyle="italic">อายุงาน (ปี)</text>
 
                 {/* y axis */}
                 {SUBGRADES.map((sg,i)=>{
@@ -304,10 +308,10 @@ export default function App() {
                   return (
                     <g key={sg.key} transform={`translate(0,${ySc(i)})`}>
                       <line x1={-4} x2={0} stroke="#939598" strokeWidth={0.8}/>
-                      <rect x={-PAD.left+4} y={-9} width={26} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
-                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={13} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
-                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={13} fill="#5a6175">{sg.position}</text>}
-                      <text x={-7} y={4} textAnchor="end" fontSize={12} fill="#939598">({cnt})</text>
+                      <rect x={-PAD.left+4} y={-9} width={fs(26)} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
+                      <text x={-PAD.left+fs(17)} y={4} textAnchor="middle" fontSize={fs(13)} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
+                      {!compact&&<text x={-PAD.left+fs(36)} y={4} textAnchor="start" fontSize={fs(13)} fill="#5a6175">{sg.position}</text>}
+                      <text x={-7} y={4} textAnchor="end" fontSize={fs(12)} fill="#939598">({cnt})</text>
                     </g>
                   );
                 })}
@@ -323,20 +327,20 @@ export default function App() {
                 left:Math.min(Math.max(tooltip.cx+PAD.left+14-85, 8), SVG_W-185),
                 top:Math.min(tooltip.cy+PAD.top+14, SVG_H-130),
                 background:C.blueDark,borderRadius:8,padding:"10px 14px",
-                fontSize:11,color:"#eef1f8",pointerEvents:"none",zIndex:10,
-                boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:170,
+                fontSize:fs(12),color:"#eef1f8",pointerEvents:"none",zIndex:10,
+                boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:180,
                 border:`1px solid ${isAtRisk(tooltip.e)?C.orange:C.blueLight}`}}>
-                <div style={{fontWeight:700,color:"#fff",marginBottom:4}}>{tooltip.e.name}</div>
-                {isAtRisk(tooltip.e)&&<div style={{display:"inline-block",background:`${C.orange}30`,color:C.orange,fontSize:9.5,fontWeight:700,borderRadius:4,padding:"2px 7px",marginBottom:6}}>▲ กลุ่มน่าเป็นห่วง</div>}
+                <div style={{fontWeight:700,color:"#fff",marginBottom:4,fontSize:fs(13)}}>{tooltip.e.name}</div>
+                {isAtRisk(tooltip.e)&&<div style={{display:"inline-block",background:`${C.orange}30`,color:C.orange,fontSize:fs(11),fontWeight:700,borderRadius:4,padding:"2px 7px",marginBottom:6}}>▲ กลุ่มน่าเป็นห่วง</div>}
                 <div style={{color:"#aab3cc",marginBottom:2}}>Sub-Grade: <b style={{color:"#fff"}}>{tooltip.e.subgrade}</b></div>
-                <div style={{color:"#aab3cc",marginBottom:6,fontSize:10}}>{SUBGRADES[tooltip.e.yIdx].position}</div>
-                <div style={{color:C.orange,fontWeight:700,fontSize:15}}>{tooltip.e.years} <span style={{fontSize:11,color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
-                <div style={{color:"#555e7a",fontSize:9,marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
+                <div style={{color:"#aab3cc",marginBottom:6,fontSize:fs(11)}}>{SUBGRADES[tooltip.e.yIdx].position}</div>
+                <div style={{color:C.orange,fontWeight:700,fontSize:fs(16)}}>{tooltip.e.years} <span style={{fontSize:fs(12),color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
+                <div style={{color:"#555e7a",fontSize:fs(10),marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
               </div>
             )}
           </div>
 
-          {/* Action Panel — overlay on mobile, side on desktop */}
+          {/* Action Panel */}
           {selEmp&&(
             <div style={{
               width: compact ? "100%" : PANEL_W,
@@ -350,19 +354,19 @@ export default function App() {
               <div style={{background:isAtRisk(selEmp)?`${C.orange}20`:`${C.blue}30`,padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
-                    <div style={{fontWeight:700,color:"#fff",fontSize:13,marginBottom:2}}>{selEmp.name}</div>
-                    <div style={{fontSize:11,color:isAtRisk(selEmp)?C.orange:C.sub,fontWeight:700}}>Sub-Grade: {selEmp.subgrade}</div>
-                    <div style={{fontSize:10.5,color:C.gray,marginTop:1}}>{SUBGRADES[selEmp.yIdx].position}</div>
+                    <div style={{fontWeight:700,color:"#fff",fontSize:fs(14),marginBottom:2}}>{selEmp.name}</div>
+                    <div style={{fontSize:fs(12),color:isAtRisk(selEmp)?C.orange:C.sub,fontWeight:700}}>Sub-Grade: {selEmp.subgrade}</div>
+                    <div style={{fontSize:fs(12),color:C.gray,marginTop:1}}>{SUBGRADES[selEmp.yIdx].position}</div>
                   </div>
-                  <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.gray,fontSize:18,padding:0,lineHeight:1}}>✕</button>
+                  <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.gray,fontSize:fs(18),padding:0,lineHeight:1}}>✕</button>
                 </div>
                 <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
-                  <span style={{fontSize:11,color:C.orange,fontWeight:700,background:`${C.orange}25`,padding:"3px 9px",borderRadius:20}}>⏱ {selEmp.years} ปี</span>
-                  {isAtRisk(selEmp)&&<span style={{fontSize:11,color:"#fca5a5",fontWeight:700,background:"#b91c1c40",padding:"3px 9px",borderRadius:20}}>▲ น่าเป็นห่วง</span>}
+                  <span style={{fontSize:fs(12),color:C.orange,fontWeight:700,background:`${C.orange}25`,padding:"3px 9px",borderRadius:20}}>⏱ {selEmp.years} ปี</span>
+                  {isAtRisk(selEmp)&&<span style={{fontSize:fs(12),color:"#fca5a5",fontWeight:700,background:"#b91c1c40",padding:"3px 9px",borderRadius:20}}>▲ น่าเป็นห่วง</span>}
                 </div>
               </div>
               <div style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:10}}>Action Plan สำหรับผู้บริหาร</div>
+                <div style={{fontSize:fs(12),fontWeight:700,color:"#fff",marginBottom:10}}>Action Plan สำหรับผู้บริหาร</div>
                 <div style={{display:"flex",flexDirection:"column",gap:7}}>
                   {ACTION_TAGS.map(a=>{
                     const checked=(acts[selEmp.id]||[]).includes(a.key);
@@ -374,15 +378,15 @@ export default function App() {
                         <div style={{width:16,height:16,borderRadius:4,flexShrink:0,border:`1.5px solid ${checked?a.color:"#3a4e7a"}`,background:checked?a.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
                           {checked&&<svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </div>
-                        <span style={{fontSize:11,color:checked?a.color:C.sub,fontWeight:checked?700:400}}>{a.label}</span>
+                        <span style={{fontSize:fs(12),color:checked?a.color:C.sub,fontWeight:checked?700:400}}>{a.label}</span>
                       </div>
                     );
                   })}
                 </div>
                 {(acts[selEmp.id]||[]).length>0&&(
                   <div style={{marginTop:12,padding:"9px 11px",background:"#1a2644",borderRadius:7,border:`1px solid ${C.border}`}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"#fff",marginBottom:5}}>✅ Action ที่เลือก</div>
-                    {(acts[selEmp.id]||[]).map(k=>{const a=ACTION_TAGS.find(x=>x.key===k);return <div key={k} style={{fontSize:11,color:a.color,fontWeight:600,marginBottom:2}}>· {a.label}</div>;})}
+                    <div style={{fontSize:fs(11),fontWeight:700,color:"#fff",marginBottom:5}}>✅ Action ที่เลือก</div>
+                    {(acts[selEmp.id]||[]).map(k=>{const a=ACTION_TAGS.find(x=>x.key===k);return <div key={k} style={{fontSize:fs(12),color:a.color,fontWeight:600,marginBottom:2}}>· {a.label}</div>;})}
                   </div>
                 )}
               </div>
@@ -398,17 +402,17 @@ export default function App() {
             const pct=(cnt/ALL_EMP.length*100).toFixed(0);
             return (
               <div key={g} style={{background:C.surface,borderRadius:8,padding:"11px 12px",borderTop:`3px solid ${g>=5?C.orange:C.blueLight}`,boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
-                <div style={{fontSize:9,color:C.gray,fontWeight:700,letterSpacing:0.5,marginBottom:4}}>GRADE {g}</div>
-                <div style={{fontSize:compact?18:22,fontWeight:700,color:g>=5?C.orange:"#fff",lineHeight:1.15}}>{cnt}</div>
-                <div style={{fontSize:9,color:C.gray,marginBottom:2}}>{pct}%</div>
-                {rCnt>0&&<div style={{fontSize:10,color:C.orange,fontWeight:700}}>▲ {rCnt}</div>}
+                <div style={{fontSize:fs(10),color:C.gray,fontWeight:700,letterSpacing:0.5,marginBottom:4}}>GRADE {g}</div>
+                <div style={{fontSize:compact?fs(18):fs(23),fontWeight:700,color:g>=5?C.orange:"#fff",lineHeight:1.15}}>{cnt}</div>
+                <div style={{fontSize:fs(10),color:C.gray,marginBottom:2}}>{pct}%</div>
+                {rCnt>0&&<div style={{fontSize:fs(11),color:C.orange,fontWeight:700}}>▲ {rCnt}</div>}
               </div>
             );
           })}
         </div>
 
         {/* caption */}
-        <div style={{fontSize:10,color:C.gray,lineHeight:1.7,padding:"8px 14px",background:C.surface,borderRadius:6,border:`1px solid ${C.border}`}}>
+        <div style={{fontSize:fs(11),color:C.gray,lineHeight:1.7,padding:"8px 14px",background:C.surface,borderRadius:6,border:`1px solid ${C.border}`}}>
           <b style={{color:C.sub}}>หมายเหตุ:</b> แต่ละจุดแทนพนักงาน 1 คน · ● น้ำเงิน = พนักงานทั่วไป · ▲ ส้ม = กลุ่มน่าเป็นห่วง (อายุงาน ≥ 10 ปี · Grade 1–3) · ● เขียว = ถูก Action แล้ว · เส้นประส้ม = เกณฑ์ 10 ปี
         </div>
 
