@@ -104,7 +104,6 @@ export default function App() {
 
   const [hovered,setHovered] = useState<number | null>(null);
   const [tooltip,setTooltip] = useState<any>(null);
-  const [mousePos,setMousePos] = useState({x:0,y:0});
   const [filterGrade,setFG]  = useState<number | null>(null);
   const [onlyRisk,setOnly]   = useState(false);
   const [selEmp,setSel]      = useState(null);
@@ -298,7 +297,6 @@ export default function App() {
 
           {/* Chart */}
           <div
-            onMouseMove={(e)=>{const r=e.currentTarget.getBoundingClientRect();setMousePos({x:e.clientX-r.left,y:e.clientY-r.top});}}
             style={{flex:1,minWidth:0,background:"#ffffff",borderRadius:12,padding:"20px 14px 10px",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",border:"1px solid #e0e4f0",position:"relative"}}>
             <svg width="100%" height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{display:"block",overflow:"visible"}}>
               <g transform={`translate(${PAD.left},${PAD.top})`}>
@@ -387,8 +385,8 @@ export default function App() {
             {/* tooltip */}
             {tooltip&&!selEmp&&(
               <div style={{position:"absolute",
-                left:Math.min(Math.max(mousePos.x-90, 8), SVG_W-190),
-                top:mousePos.y+14,
+                left:Math.min(Math.max(tooltip.cx + PAD.left + 12, 8), SVG_W - 210),
+                top:Math.max(tooltip.cy + PAD.top - 28, 8),
                 background:C.blueDark,borderRadius:8,padding:"10px 14px",
                 fontSize:fs(12),color:"#eef1f8",pointerEvents:"none",zIndex:10,
                 boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:180,
