@@ -83,6 +83,7 @@ export default function App() {
 
   const [hovered,setHovered] = useState(null);
   const [tooltip,setTooltip] = useState(null);
+  const [mousePos,setMousePos] = useState({x:0,y:0});
   const [filterGrade,setFG]  = useState(null);
   const [onlyRisk,setOnly]   = useState(false);
   const [selEmp,setSel]      = useState(null);
@@ -236,7 +237,9 @@ export default function App() {
         <div style={{display:"flex",gap:PANEL_GAP,alignItems:"flex-start"}}>
 
           {/* Chart */}
-          <div style={{flex:1,minWidth:0,background:"#ffffff",borderRadius:12,padding:"20px 14px 10px",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",border:"1px solid #e0e4f0",position:"relative"}}>
+          <div
+            onMouseMove={(e)=>{const r=e.currentTarget.getBoundingClientRect();setMousePos({x:e.clientX-r.left,y:e.clientY-r.top});}}
+            style={{flex:1,minWidth:0,background:"#ffffff",borderRadius:12,padding:"20px 14px 10px",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",border:"1px solid #e0e4f0",position:"relative"}}>
             <svg width="100%" height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{display:"block",overflow:"visible"}}>
               <g transform={`translate(${PAD.left},${PAD.top})`}>
 
@@ -295,11 +298,11 @@ export default function App() {
                 {/* x axis */}
                 {xTicks.map(t=>(
                   <g key={t} transform={`translate(${xSc(t)},${pH})`}>
-                    <line y1={0} y2={4} stroke="#939598" strokeWidth={0.8}/>
-                    <text y={fs(16)} textAnchor="middle" fontSize={fs(12)} fill="#5a6175">{t}</text>
+                    <line y1={0} y2={5} stroke="#939598" strokeWidth={1}/>
+                    <text y={fs(20)} textAnchor="middle" fontSize={fs(15)} fontWeight={600} fill="#1a1a2e">{t}</text>
                   </g>
                 ))}
-                <text x={pW/2} y={pH+fs(38)} textAnchor="middle" fontSize={fs(13)} fill="#5a6175" fontStyle="italic">อายุงาน (ปี)</text>
+                <text x={pW/2} y={pH+fs(42)} textAnchor="middle" fontSize={fs(15)} fontWeight={600} fill="#1a1a2e" fontStyle="italic">อายุงาน (ปี)</text>
 
                 {/* y axis */}
                 {SUBGRADES.map((sg,i)=>{
@@ -324,8 +327,8 @@ export default function App() {
             {/* tooltip */}
             {tooltip&&!selEmp&&(
               <div style={{position:"absolute",
-                left:Math.min(Math.max(tooltip.cx+PAD.left+14-85, 8), SVG_W-185),
-                top:Math.min(tooltip.cy+PAD.top+14, SVG_H-130),
+                left:Math.min(Math.max(mousePos.x-90, 8), SVG_W-190),
+                top:mousePos.y+14,
                 background:C.blueDark,borderRadius:8,padding:"10px 14px",
                 fontSize:fs(12),color:"#eef1f8",pointerEvents:"none",zIndex:10,
                 boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:180,
