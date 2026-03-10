@@ -305,9 +305,9 @@ export default function App() {
                     <g key={sg.key} transform={`translate(0,${ySc(i)})`}>
                       <line x1={-4} x2={0} stroke="#939598" strokeWidth={0.8}/>
                       <rect x={-PAD.left+4} y={-9} width={26} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
-                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={10} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
-                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={9} fill="#5a6175">{sg.position}</text>}
-                      <text x={-7} y={4} textAnchor="end" fontSize={9} fill="#939598">({cnt})</text>
+                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={12} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
+                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={11} fill="#5a6175">{sg.position}</text>}
+                      <text x={-7} y={4} textAnchor="end" fontSize={11} fill="#939598">({cnt})</text>
                     </g>
                   );
                 })}
