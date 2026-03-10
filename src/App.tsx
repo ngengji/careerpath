@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 
 const C = {
   blue:     "#394A76",
@@ -109,6 +110,7 @@ export default function App() {
   const [selEmp,setSel]      = useState(null);
   const [acts,setActs]       = useState({});
   const [riskOpen,setRisk]   = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
 
   // responsive breakpoints
   const compact = cw < 700;
@@ -155,6 +157,10 @@ export default function App() {
   if (onlyRisk) dots = dots.filter(isAtRisk);
 
   const toggle=(eid,key)=>setActs(p=>{const c=p[eid]||[];return{...p,[eid]:c.includes(key)?c.filter(k=>k!==key):[...c,key]};});
+  const onZoomChange = (z:number) => {
+    setZoomLevel(z);
+    applyZoom(z);
+  };
 
   const kpis=[
     {label:"พนักงานทั้งหมด",      val:ALL_EMP.length,  unit:"คน", sub:"ข้อมูล ณ ปัจจุบัน",           alert:false},
@@ -194,6 +200,26 @@ export default function App() {
                 <span style={{fontSize:fs(11),color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
               </div>
               <div style={{fontSize:fs(11),color:C.gray}}>มีนาคม 2569</div>
+              <div style={{marginTop:8,display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                {ZOOM_OPTIONS.map(z => (
+                  <button
+                    key={z}
+                    onClick={() => onZoomChange(z)}
+                    style={{
+                      border:`1px solid ${zoomLevel===z?C.orange:C.border}`,
+                      background:zoomLevel===z?C.orange:"transparent",
+                      color:zoomLevel===z?"#fff":C.sub,
+                      borderRadius:6,
+                      padding:"3px 7px",
+                      fontSize:fs(10),
+                      fontWeight:700,
+                      cursor:"pointer"
+                    }}
+                  >
+                    {Math.round(z*100)}%
+                  </button>
+                ))}
+              </div>
               <div style={{marginTop:8}}>
                 <Link to="/executive-priority" style={{textDecoration:"none",display:"inline-block",background:"#fff",color:C.blue,padding:"6px 10px",borderRadius:8,fontSize:fs(11),fontWeight:700}}>
                   Executive Priority

@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 import ExecutivePriorityPage from './ExecutivePriorityPage'
+import { applyInitialZoom } from './zoom'
 
-document.documentElement.style.zoom = '150%'
+applyInitialZoom()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

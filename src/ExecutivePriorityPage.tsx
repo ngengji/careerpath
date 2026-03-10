@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 
 const C = {
   blue: "#394A76",
@@ -120,6 +122,7 @@ const getPriorityTier = (e: Employee) => {
 };
 
 export default function ExecutivePriorityPage() {
+  const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
   const priorityGroups = {
     P1: ALL_EMP.filter((e) => getPriorityTier(e) === "P1"),
     P2: ALL_EMP.filter((e) => getPriorityTier(e) === "P2"),
@@ -129,6 +132,11 @@ export default function ExecutivePriorityPage() {
   const topPriority = [...priorityGroups.P1]
     .sort((a, b) => a.performance - b.performance || b.years - a.years)
     .slice(0, 8);
+
+  const onZoomChange = (z: number) => {
+    setZoomLevel(z);
+    applyZoom(z);
+  };
 
   return (
     <div style={{ background: "linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)", minHeight: "100dvh", fontFamily: "'Sarabun',sans-serif", padding: "24px 20px", boxSizing: "border-box" }}>
@@ -140,9 +148,31 @@ export default function ExecutivePriorityPage() {
             <div style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>Executive Priority Dashboard</div>
             <div style={{ fontSize: 12, color: C.sub, marginTop: 3 }}>จัดลำดับ Action จากอายุงานและผลงานปีที่ผ่านมา</div>
           </div>
-          <Link to="/" style={{ textDecoration: "none", background: "#fff", color: C.blue, padding: "8px 12px", borderRadius: 8, fontWeight: 700, fontSize: 12 }}>
-            กลับหน้า Overview
-          </Link>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {ZOOM_OPTIONS.map((z) => (
+                <button
+                  key={z}
+                  onClick={() => onZoomChange(z)}
+                  style={{
+                    border: `1px solid ${zoomLevel === z ? C.orange : C.border}`,
+                    background: zoomLevel === z ? C.orange : "transparent",
+                    color: zoomLevel === z ? "#fff" : C.sub,
+                    borderRadius: 6,
+                    padding: "3px 7px",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  {Math.round(z * 100)}%
+                </button>
+              ))}
+            </div>
+            <Link to="/" style={{ textDecoration: "none", background: "#fff", color: C.blue, padding: "8px 12px", borderRadius: 8, fontWeight: 700, fontSize: 12 }}>
+              กลับหน้า Overview
+            </Link>
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10 }}>
