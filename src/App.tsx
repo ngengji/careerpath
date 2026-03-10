@@ -79,13 +79,20 @@ function generateEmployees() {
 }
 const ALL_EMP = generateEmployees();
 const isAtRisk = e => e.years>=10 && e.grade<=3;
+const P1_IDS = new Set(
+  [...ALL_EMP]
+    .filter(e => e.grade <= 3 && e.years >= 10)
+    .sort((a,b) => b.performance - a.performance || b.years - a.years)
+    .slice(0,5)
+    .map(e => e.id)
+);
 const getPriorityTier = (e) => {
-  if (e.years >= 10 && e.performance >= 4.2 && e.grade <= 3) return "P1";
+  if (P1_IDS.has(e.id)) return "P1";
   if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
   return "P3";
 };
 const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
+  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
   P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", note: "พร้อมเติบโตต่อในระยะกลาง" },
   P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", note: "ติดตามและยกระดับผลลัพธ์" },
 };
@@ -398,8 +405,8 @@ export default function App() {
                 <div style={{color:C.orange,fontWeight:700,fontSize:fs(16)}}>{tooltip.e.years} <span style={{fontSize:fs(12),color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
                 <div style={{color:"#60a5fa",fontWeight:700,fontSize:fs(12),marginTop:3}}>Performance: {tooltip.e.performance}/5</div>
                 <div style={{marginTop:4,fontSize:fs(10),fontWeight:700,color:PRIORITY_META[getPriorityTier(tooltip.e)].color}}>{PRIORITY_META[getPriorityTier(tooltip.e)].label}</div>
-                <div style={{marginTop:4,fontSize:fs(10),color:"#aab3cc"}}>เกณฑ์ P1: Perf ≥ 4.2 · อายุงาน ≥ 10 ปี · Grade ≤ 3</div>
-                <div style={{fontSize:fs(10),color:"#aab3cc"}}>สถานะ: {tooltip.e.performance>=4.2?"✓":"✕"} Perf · {tooltip.e.years>=10?"✓":"✕"} Tenure · {tooltip.e.grade<=3?"✓":"✕"} Grade</div>
+                <div style={{marginTop:4,fontSize:fs(10),color:"#aab3cc"}}>เกณฑ์ P1: Top 5 จาก Grade ≤ 3 และอายุงาน ≥ 10 ปี โดยเรียง Perf สูงก่อน</div>
+                <div style={{fontSize:fs(10),color:"#aab3cc"}}>สถานะ: {P1_IDS.has(tooltip.e.id)?"✓ อยู่ใน Top 5 P1":"✕ ยังไม่อยู่ใน Top 5 P1"}</div>
                 <div style={{color:"#555e7a",fontSize:fs(10),marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
               </div>
             )}
