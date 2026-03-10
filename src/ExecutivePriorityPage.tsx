@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
+import {
+  ALL_EMP, getPriorityTier, PRIORITY_META, ACTION_TAGS,
+  loadActions, type Employee,
+} from "./data";
 
 const C = {
   blue: "#394A76",
@@ -10,91 +14,6 @@ const C = {
   border: "#3a4e7a",
   chartInk: "#1a1a2e",
   chartSub: "#5a6175",
-};
-
-const SUBGRADES = [
-  { key: "1A", grade: 1, label: "1A" },
-  { key: "2B", grade: 2, label: "2B" },
-  { key: "2A", grade: 2, label: "2A" },
-  { key: "3C", grade: 3, label: "3C" },
-  { key: "3B", grade: 3, label: "3B" },
-  { key: "3A", grade: 3, label: "3A" },
-  { key: "4C", grade: 4, label: "4C" },
-  { key: "4B", grade: 4, label: "4B" },
-  { key: "4A", grade: 4, label: "4A" },
-  { key: "5B", grade: 5, label: "5B" },
-  { key: "5A", grade: 5, label: "5A" },
-  { key: "6B", grade: 6, label: "6B" },
-  { key: "6A", grade: 6, label: "6A" },
-];
-
-const DIST: Record<string, number> = {
-  "1A": 30, "2B": 28, "2A": 22, "3C": 22, "3B": 18, "3A": 14,
-  "4C": 12, "4B": 9, "4A": 7, "5B": 6, "5A": 4, "6B": 3, "6A": 2,
-};
-
-const YEAR_RANGE: Record<string, [number, number]> = {
-  "1A": [0, 5], "2B": [1, 6], "2A": [2, 8], "3C": [2, 7], "3B": [3, 10],
-  "3A": [4, 13], "4C": [5, 10], "4B": [6, 12], "4A": [7, 14],
-  "5B": [8, 13], "5A": [9, 15], "6B": [10, 15], "6A": [11, 15],
-};
-
-const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", action: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
-  P2: { label: "P2 ศักยภาพดี",    color: "#c2410c", bg: "#ffedd5", action: "วางแผนเร่งพัฒนาเพื่อขึ้นกลุ่มนำ" },
-  P3: { label: "P3 พัฒนาต่อ",     color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและยกระดับ performance" },
-};
-
-const ACTION_TAGS = [
-  { key: "promote",    label: "เลื่อนตำแหน่ง",      color: "#1a7340", bg: "#edfaf3" },
-  { key: "succession", label: "วางแผน Succession",   color: "#394A76", bg: "#eef1f8" },
-  { key: "retention",  label: "Retention Interview", color: "#b91c1c", bg: "#fef2f2" },
-  { key: "stretch",    label: "Stretch Assignment",  color: "#EC5924", bg: "#fff4f0" },
-];
-
-type Employee = { id: number; subgrade: string; grade: number; years: number; performance: number; };
-
-function seededRandom(seed: number) {
-  let s = seed;
-  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
-}
-
-function generateEmployees() {
-  const rng = seededRandom(42);
-  const total = 190;
-  const tw = Object.values(DIST).reduce((a, b) => a + b, 0);
-  let rem = total;
-  const counts: Record<string, number> = {};
-  const emps: Employee[] = [];
-  let id = 1;
-  SUBGRADES.forEach((sg, i) => {
-    if (i < SUBGRADES.length - 1) { counts[sg.key] = Math.round((DIST[sg.key] / tw) * total); rem -= counts[sg.key]; }
-    else { counts[sg.key] = rem; }
-  });
-  SUBGRADES.forEach((sg) => {
-    const [mn, mx] = YEAR_RANGE[sg.key];
-    for (let i = 0; i < counts[sg.key]; i++) {
-      const years = +(mn + rng() * (mx - mn)).toFixed(1);
-      const perfRaw = 3.5 + (sg.grade >= 4 ? 0.25 : 0) - (years >= 10 && sg.grade <= 3 ? 0.8 : 0) + (rng() - 0.5) * 1.7;
-      const performance = +Math.max(1, Math.min(5, perfRaw)).toFixed(1);
-      emps.push({ id: id++, subgrade: sg.key, grade: sg.grade, years, performance });
-    }
-  });
-  return emps;
-}
-
-const ALL_EMP = generateEmployees();
-
-const P1_IDS = new Set(
-  [...ALL_EMP].filter((e) => e.grade <= 3 && e.years >= 10)
-    .sort((a, b) => b.performance - a.performance || b.years - a.years)
-    .slice(0, 5).map((e) => e.id)
-);
-
-const getPriorityTier = (e: Employee) => {
-  if (P1_IDS.has(e.id)) return "P1";
-  if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
-  return "P3";
 };
 
 // ── Action badge component ──────────────────────────────────────────────────
@@ -119,24 +38,7 @@ export default function ExecutivePriorityPage() {
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
   const [acts, setActs] = useState<Record<number, string[]>>({});
 
-  // โหลด actions — API ก่อน ถ้าไม่มีใช้ localStorage
-  useEffect(() => {
-    fetch("/api/actions")
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => {
-        const parsed: Record<number, string[]> = {};
-        for (const [k, v] of Object.entries(data)) parsed[Number(k)] = v as string[];
-        setActs(parsed);
-      })
-      .catch(() => {
-        try {
-          const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
-          const parsed: Record<number, string[]> = {};
-          for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
-          setActs(parsed);
-        } catch {}
-      });
-  }, []);
+  useEffect(() => { loadActions().then(setActs); }, []);
 
   const priorityGroups = {
     P1: ALL_EMP.filter((e) => getPriorityTier(e) === "P1"),
@@ -189,7 +91,7 @@ export default function ExecutivePriorityPage() {
               <div key={k} style={{ background: "#fff", borderRadius: 10, padding: "12px 13px", borderTop: `3px solid ${PRIORITY_META[k].color}` }}>
                 <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>{PRIORITY_META[k].label}</div>
                 <div style={{ fontSize: 28, fontWeight: 700, color: PRIORITY_META[k].color }}>{total}</div>
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, marginBottom: 8 }}>{PRIORITY_META[k].action}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, marginBottom: 8 }}>{PRIORITY_META[k].note}</div>
                 {/* Progress bar */}
                 <div style={{ fontSize: 10, color: "#64748b", marginBottom: 4, display: "flex", justifyContent: "space-between" }}>
                   <span>Action Progress</span>

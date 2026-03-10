@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 import * as XLSX from "xlsx";
+import {
+  SUBGRADES, ALL_EMP, isAtRisk, getPriorityTier, PRIORITY_META, ACTION_TAGS,
+  P1_IDS, loadActions, saveAction,
+} from "./data";
 
 const C = {
   blue:     "#394A76",
@@ -21,82 +25,13 @@ const C = {
   chartSub: "#5a6175",
 };
 
-const SUBGRADES = [
-  { key:"1A", grade:1, label:"1A", position:"เจ้าหน้าที่ทั่วไป" },
-  { key:"2B", grade:2, label:"2B", position:"เจ้าหน้าที่สนับสนุน" },
-  { key:"2A", grade:2, label:"2A", position:"เจ้าหน้าที่สนับสนุน" },
-  { key:"3C", grade:3, label:"3C", position:"นักวิชาการ" },
-  { key:"3B", grade:3, label:"3B", position:"นักวิชาการ" },
-  { key:"3A", grade:3, label:"3A", position:"นักวิชาการ" },
-  { key:"4C", grade:4, label:"4C", position:"นักวิชาการอาวุโส" },
-  { key:"4B", grade:4, label:"4B", position:"นักวิชาการอาวุโส" },
-  { key:"4A", grade:4, label:"4A", position:"นักวิชาการอาวุโส" },
-  { key:"5B", grade:5, label:"5B", position:"ผู้เชี่ยวชาญ/ผู้บริหาร" },
-  { key:"5A", grade:5, label:"5A", position:"ผู้เชี่ยวชาญ/ผู้บริหาร" },
-  { key:"6B", grade:6, label:"6B", position:"ผู้บริหารระดับสูง" },
-  { key:"6A", grade:6, label:"6A", position:"ผู้บริหารระดับสูง" },
-];
-
-const DIST = {"1A":30,"2B":28,"2A":22,"3C":22,"3B":18,"3A":14,"4C":12,"4B":9,"4A":7,"5B":6,"5A":4,"6B":3,"6A":2};
-const YEAR_RANGE = {
-  "1A":[0,5],"2B":[1,6],"2A":[2,8],"3C":[2,7],"3B":[3,10],"3A":[4,13],
-  "4C":[5,10],"4B":[6,12],"4A":[7,14],"5B":[8,13],"5A":[9,15],"6B":[10,15],"6A":[11,15],
-};
 const GRADE_DOT = {1:"#c5cad4",2:"#8fa3bf",3:"#5a72a8",4:"#394A76",5:"#EC5924",6:"#a83e18"};
-
-const ACTION_TAGS = [
-  { key:"promote",    label:"เลื่อนตำแหน่ง",      color:"#1a7340", bg:"#edfaf3" },
-  { key:"succession", label:"วางแผน Succession",   color:C.blue,    bg:"#eef1f8" },
-  { key:"retention",  label:"Retention Interview", color:"#b91c1c", bg:"#fef2f2" },
-  { key:"stretch",    label:"Stretch Assignment",  color:C.orange,  bg:"#fff4f0" },
-];
 
 const RISK_ITEMS = [
   { icon:"⏳", title:"Career Stagnation",    color:C.blue,   body:"อยู่ Sub-Grade เดิมนานเกินเกณฑ์ สะท้อนว่าระบบ promotion ไม่ทำงาน หรือพนักงานขาด development plan" },
   { icon:"🚪", title:"Retention Risk",       color:C.orange, body:"ไม่เห็นความก้าวหน้า → disengage → ลาออก สูญเสีย know-how และต้นทุนการสร้างคนที่สะสมมา" },
   { icon:"💡", title:"Organizational Waste", color:C.blue,   body:"ประสบการณ์สูงแต่ถูก assign งานระดับต้น ศักยภาพไม่ถูกออกมา กระทบ morale ทีม" },
 ];
-
-function seededRandom(seed) {
-  let s = seed;
-  return () => { s=(s*16807)%2147483647; return (s-1)/2147483646; };
-}
-function generateEmployees() {
-  const rng=seededRandom(42); const emps=[]; let id=1;
-  const total=190, tw=Object.values(DIST).reduce((a,b)=>a+b,0);
-  let rem=total; const counts={};
-  SUBGRADES.forEach((sg,i)=>{ if(i<SUBGRADES.length-1){counts[sg.key]=Math.round((DIST[sg.key]/tw)*total);rem-=counts[sg.key];}else counts[sg.key]=rem; });
-  SUBGRADES.forEach(sg=>{
-    const [mn,mx]=YEAR_RANGE[sg.key];
-    for(let i=0;i<counts[sg.key];i++){
-      const years=+(mn+rng()*(mx-mn)).toFixed(1);
-      const yIdx=SUBGRADES.findIndex(s=>s.key===sg.key);
-      const perfRaw = 3.5 + (sg.grade>=4?0.25:0) - (years>=10&&sg.grade<=3?0.8:0) + (rng()-0.5)*1.7;
-      const performance = +Math.max(1, Math.min(5, perfRaw)).toFixed(1);
-      emps.push({id:id++,subgrade:sg.key,grade:sg.grade,yIdx,yPos:yIdx+(rng()-0.5)*0.36,years,performance,name:`พนักงาน #${id-1}`});
-    }
-  });
-  return emps;
-}
-const ALL_EMP = generateEmployees();
-const isAtRisk = e => e.years>=10 && e.grade<=3;
-const P1_IDS = new Set(
-  [...ALL_EMP]
-    .filter(e => e.grade <= 3 && e.years >= 10)
-    .sort((a,b) => b.performance - a.performance || b.years - a.years)
-    .slice(0,5)
-    .map(e => e.id)
-);
-const getPriorityTier = (e) => {
-  if (P1_IDS.has(e.id)) return "P1";
-  if ((e.years >= 8 && e.performance >= 3.6 && e.grade <= 4) || (e.years >= 10 && e.performance >= 3.3 && e.grade <= 4)) return "P2";
-  return "P3";
-};
-const PRIORITY_META = {
-  P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", note: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
-  P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", note: "พร้อมเติบโตต่อในระยะกลาง" },
-  P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", note: "ติดตามและยกระดับผลลัพธ์" },
-};
 
 export default function App() {
   const containerRef = useRef(null);
@@ -120,24 +55,7 @@ export default function App() {
   const [saving,setSaving]   = useState(false);
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
 
-  // โหลด actions — API ก่อน ถ้าไม่มีใช้ localStorage (GitHub Pages)
-  useEffect(() => {
-    fetch("/api/actions")
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => {
-        const parsed: Record<number, string[]> = {};
-        for (const [k, v] of Object.entries(data)) parsed[Number(k)] = v as string[];
-        setActs(parsed);
-      })
-      .catch(() => {
-        try {
-          const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
-          const parsed: Record<number, string[]> = {};
-          for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
-          setActs(parsed);
-        } catch {}
-      });
-  }, []);
+  useEffect(() => { loadActions().then(setActs); }, []);
 
   // responsive breakpoints
   const compact = cw < 700;
@@ -187,24 +105,9 @@ export default function App() {
     setActs(prev => {
       const current = prev[eid] || [];
       const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key];
-      const updated = { ...prev, [eid]: next };
-      // บันทึกลง DB (ถ้าไม่มี API ใช้ localStorage แทน)
       setSaving(true);
-      fetch(`/api/actions/${eid}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actions: next }),
-      })
-        .then(r => { if (!r.ok) throw new Error(); })
-        .catch(() => {
-          try {
-            const current = JSON.parse(localStorage.getItem("career_actions") || "{}");
-            if (next.length === 0) delete current[eid]; else current[eid] = next;
-            localStorage.setItem("career_actions", JSON.stringify(current));
-          } catch {}
-        })
-        .finally(() => setSaving(false));
-      return updated;
+      saveAction(eid, next).finally(() => setSaving(false));
+      return { ...prev, [eid]: next };
     });
   };
   const exportExcel = () => {
