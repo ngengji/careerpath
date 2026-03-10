@@ -395,11 +395,13 @@ export default function App() {
                   </>;
                 })()}
 
-                {/* dots — draw dimmed first, then highlighted on top */}
+                {/* dots — render order: non-risk → at-risk → P1 → search hits (each layer on top) */}
                 {[...dots].sort((a,b)=>{
-                  const aMatch=searchActive&&matchSearch(a,searchQuery);
-                  const bMatch=searchActive&&matchSearch(b,searchQuery);
-                  return (aMatch?1:0)-(bMatch?1:0);
+                  const aMatch=searchActive&&matchSearch(a,searchQuery)?3:0;
+                  const bMatch=searchActive&&matchSearch(b,searchQuery)?3:0;
+                  const aLayer=p1RankMap.has(a.id)?2:isAtRisk(a)?1:0;
+                  const bLayer=p1RankMap.has(b.id)?2:isAtRisk(b)?1:0;
+                  return (aLayer+aMatch)-(bLayer+bMatch);
                 }).map(e=>{
                   const dotX=xSc(e.years), dotY=ySc(e.yPos);
                   const risk=isAtRisk(e), isHov=hovered===e.id, isSel=selEmp?.id===e.id;
@@ -428,21 +430,16 @@ export default function App() {
                   );
                 })}
 
-                {/* P1 rank badges — always rendered on top, no search needed */}
-                {[...p1RankMap.entries()].map(([id, rank])=>{
+                {/* P1 employees: white ring outline to distinguish from other at-risk dots */}
+                {[...p1RankMap.keys()].map(id=>{
                   const e = ALL_EMP.find(x=>x.id===id)!;
                   const dotX=xSc(e.years), dotY=ySc(e.yPos);
                   const isHit=searchActive&&matchSearch(e,searchQuery);
-                  if(isHit) return null; // flag line handles it when searching
+                  if(isHit) return null;
                   return (
-                    <g key={`p1-${id}`} pointerEvents="none">
-                      {/* white ring to separate from background dots */}
-                      <circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#fff" strokeWidth={1.8} opacity={0.9}/>
-                      {/* rank badge above dot */}
-                      <rect x={dotX-8} y={dotY-22} width={16} height={13} rx={3} fill="#b91c1c"/>
-                      <text x={dotX} y={dotY-12} textAnchor="middle" fontSize={fs(8.5)} fontWeight={700} fill="#fff">#{rank}</text>
-                      {/* connector line */}
-                      <line x1={dotX} y1={dotY-9} x2={dotX} y2={dotY-22+13} stroke="#b91c1c" strokeWidth={1} opacity={0.7}/>
+                    <g key={`p1ring-${id}`} pointerEvents="none">
+                      <circle cx={dotX} cy={dotY} r={10} fill="none" stroke="#fff" strokeWidth={2} opacity={0.85}/>
+                      <circle cx={dotX} cy={dotY} r={12} fill="none" stroke="#b91c1c" strokeWidth={1} opacity={0.6} strokeDasharray="3 2"/>
                     </g>
                   );
                 })}
