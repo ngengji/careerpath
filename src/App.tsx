@@ -96,6 +96,12 @@ export default function App() {
   const xTicks = compact ? [0,5,10,15] : [0,2,4,6,8,10,12,14];
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
+  // P1 rank map: id → rank 1-5 (always visible on chart)
+  const p1RankMap = new Map(
+    [...ALL_EMP].filter(e=>P1_IDS.has(e.id))
+      .sort((a,b)=>b.performance-a.performance||b.years-a.years)
+      .map((e,i)=>[e.id,i+1])
+  );
   const avgYears = (ALL_EMP.reduce((s,e)=>s+e.years,0)/ALL_EMP.length).toFixed(1);
   const avgPerf  = (ALL_EMP.reduce((s,e)=>s+e.performance,0)/ALL_EMP.length).toFixed(2);
   const actioned = Object.keys(acts).filter(id=>acts[id]?.length>0).length;
@@ -400,7 +406,8 @@ export default function App() {
                   const hasAct=(acts[e.id]||[]).length>0;
                   const isSearchHit=searchActive&&matchSearch(e,searchQuery);
                   const isDimmed=searchActive&&!isSearchHit&&!isHov&&!isSel;
-                  const r=isSearchHit?10:isHov||isSel?8:risk?6.5:5;
+                  const isP1=p1RankMap.has(e.id);
+                  const r=isSearchHit?10:isHov||isSel?8:isP1?7.5:risk?6.5:5;
                   return (
                     <g key={e.id} style={{cursor:"pointer"}}
                       onMouseEnter={()=>{setHovered(e.id);setTooltip({e,cx:dotX,cy:dotY});}}
@@ -417,6 +424,25 @@ export default function App() {
                             fill={GRADE_DOT[e.grade]} fillOpacity={isDimmed?0.12:isHov||isSel||isSearchHit?1:0.62}
                             stroke={isSearchHit?"#fff":isSel?"#fff":"none"} strokeWidth={1.5}/>}
                       {hasAct&&!isDimmed&&<circle cx={dotX+(risk?5:4)} cy={dotY-(risk?5:4)} r={3} fill="#1a7340" stroke="#fff" strokeWidth={1}/>}
+                    </g>
+                  );
+                })}
+
+                {/* P1 rank badges — always rendered on top, no search needed */}
+                {[...p1RankMap.entries()].map(([id, rank])=>{
+                  const e = ALL_EMP.find(x=>x.id===id)!;
+                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
+                  const isHit=searchActive&&matchSearch(e,searchQuery);
+                  if(isHit) return null; // flag line handles it when searching
+                  return (
+                    <g key={`p1-${id}`} pointerEvents="none">
+                      {/* white ring to separate from background dots */}
+                      <circle cx={dotX} cy={dotY} r={9} fill="none" stroke="#fff" strokeWidth={1.8} opacity={0.9}/>
+                      {/* rank badge above dot */}
+                      <rect x={dotX-8} y={dotY-22} width={16} height={13} rx={3} fill="#b91c1c"/>
+                      <text x={dotX} y={dotY-12} textAnchor="middle" fontSize={fs(8.5)} fontWeight={700} fill="#fff">#{rank}</text>
+                      {/* connector line */}
+                      <line x1={dotX} y1={dotY-9} x2={dotX} y2={dotY-22+13} stroke="#b91c1c" strokeWidth={1} opacity={0.7}/>
                     </g>
                   );
                 })}
