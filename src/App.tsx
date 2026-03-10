@@ -210,6 +210,11 @@ export default function App() {
                 <span style={{fontSize:fs(11),color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
               </div>
               <div style={{fontSize:fs(11),color:C.gray}}>มีนาคม 2569</div>
+              <div style={{marginTop:8}}>
+                <Link to="/executive-priority" style={{textDecoration:"none",display:"inline-block",background:"#fff",color:C.blue,padding:"6px 10px",borderRadius:8,fontSize:fs(11),fontWeight:700}}>
+                  Executive Priority
+                </Link>
+              </div>
             </div>
           </div>
         </div>
