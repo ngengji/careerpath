@@ -411,6 +411,30 @@ export default function ExecutivePriorityPage() {
           </div>
         </div>
 
+        {/* P3 list with actions */}
+        <div style={{ background: "#fff", borderRadius: 12, padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", border: "1px solid #e0e4f0" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.chartInk, marginBottom: 10 }}>
+            P3 พัฒนาต่อ — {actionedCount(priorityGroups.P3)}/{priorityGroups.P3.length} คนมี Action แล้ว
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 7 }}>
+            {priorityGroups.P3.map(e => {
+              const empActs = acts[e.id] || [];
+              const hasAct = empActs.length > 0;
+              return (
+                <div key={e.id} style={{ background: matchSearch(e, searchQuery) ? "#fefce8" : hasAct ? "#f0fdf4" : "#f8fafc", border: `${matchSearch(e, searchQuery) ? "2px" : "1px"} solid ${matchSearch(e, searchQuery) ? C.orange : hasAct ? "#bbf7d0" : "#e2e8f0"}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#1d4ed8" }}>{e.performance}/5 · {e.years}ปี</span>
+                  </div>
+                  {hasAct
+                    ? <ActionBadges empActs={empActs} />
+                    : <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4 }}>ยังไม่ได้ Action</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
     </div>
   );
