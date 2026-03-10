@@ -96,16 +96,19 @@ export default function App() {
   const xTicks = compact ? [0,5,10,15] : [0,2,4,6,8,10,12,14];
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
-  // fan-out at-risk dots vertically so all are visible without shifting X (years)
-  const riskOffsets: Record<number, {dx:number,dy:number}> = {};
+  // nudge at-risk dots horizontally only when they overlap, pin Y to exact subgrade row
+  const riskOffsets: Record<number, {dx:number}> = {};
   {
-    const sorted = [...atRisk].sort((a,b) => a.years - b.years || a.yPos - b.yPos);
-    const n = sorted.length;
-    const spacing = 12; // px between each dot vertically
-    sorted.forEach((e, i) => {
-      const offset = (i - (n - 1) / 2) * spacing;
-      riskOffsets[e.id] = { dx: 0, dy: offset };
-    });
+    const sorted = [...atRisk].sort((a,b) => a.years - b.years);
+    const placed: number[] = [];
+    const minDist = 14;
+    for (const e of sorted) {
+      const baseX = xSc(e.years);
+      let dx = 0;
+      while (placed.some(px => Math.abs(baseX + dx - px) < minDist)) { dx += 10; }
+      riskOffsets[e.id] = { dx };
+      placed.push(baseX + dx);
+    }
   }
   // P1 rank map: id → rank 1-5 (always visible on chart)
   const p1RankMap = new Map(
@@ -414,8 +417,9 @@ export default function App() {
                   const bLayer=p1RankMap.has(b.id)?2:isAtRisk(b)?1:0;
                   return (aLayer+aMatch)-(bLayer+bMatch);
                 }).map(e=>{
-                  const _off=riskOffsets[e.id]; const dotX=xSc(e.years)+(_off?_off.dx:0), dotY=ySc(e.yPos)+(_off?_off.dy:0);
-                  const risk=isAtRisk(e), isHov=hovered===e.id, isSel=selEmp?.id===e.id;
+                  const _off=riskOffsets[e.id]; const risk=isAtRisk(e);
+                  const dotX=xSc(e.years)+(_off?_off.dx:0), dotY=risk?ySc(e.yIdx):ySc(e.yPos);
+                  const isHov=hovered===e.id, isSel=selEmp?.id===e.id;
                   const hasAct=(acts[e.id]||[]).length>0;
                   const isSearchHit=searchActive&&matchSearch(e,searchQuery);
                   const isDimmed=searchActive&&!isSearchHit&&!isHov&&!isSel;
@@ -445,8 +449,8 @@ export default function App() {
 
                 {/* flag lines for search hits — always on top of all dots */}
                 {searchActive && searchMatches.map(e=>{
-                  const _sOff=riskOffsets[e.id]; const dotX=xSc(e.years)+(_sOff?_sOff.dx:0), dotY=ySc(e.yPos)+(_sOff?_sOff.dy:0);
-                  const risk=isAtRisk(e);
+                  const _sOff=riskOffsets[e.id]; const risk=isAtRisk(e);
+                  const dotX=xSc(e.years)+(_sOff?_sOff.dx:0), dotY=risk?ySc(e.yIdx):ySc(e.yPos);
                   const flagColor=risk?"#fb923c":"#60a5fa";
                   return (
                     <g key={`flag-${e.id}`} pointerEvents="none">
