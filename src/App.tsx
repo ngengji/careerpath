@@ -398,6 +398,8 @@ export default function App() {
                 <div style={{color:C.orange,fontWeight:700,fontSize:fs(16)}}>{tooltip.e.years} <span style={{fontSize:fs(12),color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
                 <div style={{color:"#60a5fa",fontWeight:700,fontSize:fs(12),marginTop:3}}>Performance: {tooltip.e.performance}/5</div>
                 <div style={{marginTop:4,fontSize:fs(10),fontWeight:700,color:PRIORITY_META[getPriorityTier(tooltip.e)].color}}>{PRIORITY_META[getPriorityTier(tooltip.e)].label}</div>
+                <div style={{marginTop:4,fontSize:fs(10),color:"#aab3cc"}}>เกณฑ์ P1: Perf ≥ 4.2 · อายุงาน ≥ 10 ปี · Grade ≤ 3</div>
+                <div style={{fontSize:fs(10),color:"#aab3cc"}}>สถานะ: {tooltip.e.performance>=4.2?"✓":"✕"} Perf · {tooltip.e.years>=10?"✓":"✕"} Tenure · {tooltip.e.grade<=3?"✓":"✕"} Grade</div>
                 <div style={{color:"#555e7a",fontSize:fs(10),marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
               </div>
             )}
