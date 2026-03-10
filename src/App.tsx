@@ -96,15 +96,15 @@ export default function App() {
   const xTicks = compact ? [0,5,10,15] : [0,2,4,6,8,10,12,14];
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
-  // fan-out at-risk dots so all are visible even when overlapping
+  // fan-out at-risk dots vertically so all are visible without shifting X (years)
   const riskOffsets: Record<number, {dx:number,dy:number}> = {};
   {
     const sorted = [...atRisk].sort((a,b) => a.years - b.years || a.yPos - b.yPos);
     const n = sorted.length;
-    const spacing = 15; // px between each dot
+    const spacing = 12; // px between each dot vertically
     sorted.forEach((e, i) => {
       const offset = (i - (n - 1) / 2) * spacing;
-      riskOffsets[e.id] = { dx: offset, dy: 0 };
+      riskOffsets[e.id] = { dx: 0, dy: offset };
     });
   }
   // P1 rank map: id → rank 1-5 (always visible on chart)
