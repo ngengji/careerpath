@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 
 const C = {
   blue:     "#394A76",
@@ -63,15 +64,36 @@ function generateEmployees() {
   const total=190, tw=Object.values(DIST).reduce((a,b)=>a+b,0);
   let rem=total; const counts={};
   SUBGRADES.forEach((sg,i)=>{ if(i<SUBGRADES.length-1){counts[sg.key]=Math.round((DIST[sg.key]/tw)*total);rem-=counts[sg.key];}else counts[sg.key]=rem; });
-  SUBGRADES.forEach(sg=>{ const [mn,mx]=YEAR_RANGE[sg.key]; for(let i=0;i<counts[sg.key];i++){ const years=+(mn+rng()*(mx-mn)).toFixed(1); const yIdx=SUBGRADES.findIndex(s=>s.key===sg.key); emps.push({id:id++,subgrade:sg.key,grade:sg.grade,yIdx,yPos:yIdx+(rng()-0.5)*0.36,years,name:`พนักงาน #${id-1}`}); } });
+  SUBGRADES.forEach(sg=>{
+    const [mn,mx]=YEAR_RANGE[sg.key];
+    for(let i=0;i<counts[sg.key];i++){
+      const years=+(mn+rng()*(mx-mn)).toFixed(1);
+      const yIdx=SUBGRADES.findIndex(s=>s.key===sg.key);
+      const perfRaw = 3.5 + (sg.grade>=4?0.25:0) - (years>=10&&sg.grade<=3?0.8:0) + (rng()-0.5)*1.7;
+      const performance = +Math.max(1, Math.min(5, perfRaw)).toFixed(1);
+      emps.push({id:id++,subgrade:sg.key,grade:sg.grade,yIdx,yPos:yIdx+(rng()-0.5)*0.36,years,performance,name:`พนักงาน #${id-1}`});
+    }
+  });
   return emps;
 }
 const ALL_EMP = generateEmployees();
 const isAtRisk = e => e.years>=10 && e.grade<=3;
+const getPriorityTier = (e) => {
+  if (e.years >= 10 && e.performance <= 2.6) return "P1";
+  if ((e.years >= 8 && e.performance <= 3.2) || (e.years >= 10 && e.performance <= 3.6)) return "P2";
+  return "P3";
+};
+const PRIORITY_META = {
+  P1: { label: "P1 เร่งด่วน", color: "#b91c1c", bg: "#fee2e2", note: "Low performance + tenure สูง" },
+  P2: { label: "P2 วางแผน", color: "#c2410c", bg: "#ffedd5", note: "เริ่มชะงัก ควรโค้ช/ปรับบทบาท" },
+  P3: { label: "P3 เฝ้าระวัง", color: "#1d4ed8", bg: "#dbeafe", note: "ยังไม่วิกฤต ติดตามต่อเนื่อง" },
+};
 
 export default function App() {
   const containerRef = useRef(null);
   const [cw, setCw] = useState(900);
+  const [vh, setVh] = useState(typeof window !== "undefined" ? window.innerHeight : 900);
+  const [dpr, setDpr] = useState(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1);
 
   useEffect(() => {
     const obs = new ResizeObserver(entries => {
@@ -81,10 +103,19 @@ export default function App() {
     return () => obs.disconnect();
   }, []);
 
-  const [hovered,setHovered] = useState(null);
-  const [tooltip,setTooltip] = useState(null);
+  useEffect(() => {
+    const onResize = () => {
+      setVh(window.innerHeight);
+      setDpr(window.devicePixelRatio || 1);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const [hovered,setHovered] = useState<number | null>(null);
+  const [tooltip,setTooltip] = useState<any>(null);
   const [mousePos,setMousePos] = useState({x:0,y:0});
-  const [filterGrade,setFG]  = useState(null);
+  const [filterGrade,setFG]  = useState<number | null>(null);
   const [onlyRisk,setOnly]   = useState(false);
   const [selEmp,setSel]      = useState(null);
   const [acts,setActs]       = useState({});
@@ -121,8 +152,15 @@ export default function App() {
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
   const avgYears = (ALL_EMP.reduce((s,e)=>s+e.years,0)/ALL_EMP.length).toFixed(1);
+  const avgPerf  = (ALL_EMP.reduce((s,e)=>s+e.performance,0)/ALL_EMP.length).toFixed(2);
   const actioned = Object.keys(acts).filter(id=>acts[id]?.length>0).length;
   const topG     = Math.max(...atRisk.map(e=>e.grade));
+  const priorityGroups = {
+    P1: ALL_EMP.filter(e => getPriorityTier(e)==="P1"),
+    P2: ALL_EMP.filter(e => getPriorityTier(e)==="P2"),
+    P3: ALL_EMP.filter(e => getPriorityTier(e)==="P3"),
+  };
+  const urgentNow = priorityGroups.P1.length;
 
   let dots = filterGrade ? ALL_EMP.filter(e=>e.grade===filterGrade) : ALL_EMP;
   if (onlyRisk) dots = dots.filter(isAtRisk);
@@ -133,17 +171,24 @@ export default function App() {
     {label:"พนักงานทั้งหมด",      val:ALL_EMP.length,  unit:"คน", sub:"ข้อมูล ณ ปัจจุบัน",           alert:false},
     {label:"กลุ่มน่าเป็นห่วง",   val:atRisk.length,   unit:"คน", sub:"อายุงาน ≥10 ปี · Grade 1–3",  alert:true},
     {label:"อัตราส่วน At-Risk",   val:`${(atRisk.length/ALL_EMP.length*100).toFixed(1)}`,unit:"%",sub:"ของพนักงานทั้งหมด",alert:true},
+    {label:"Performance เฉลี่ย",   val:avgPerf,         unit:"/5", sub:"ผลงานปีที่ผ่านมา",              alert:false},
+    {label:"Priority P1",         val:urgentNow,       unit:"คน", sub:"ควรเริ่ม Action ภายใน 30 วัน", alert:true},
     {label:"อายุงานเฉลี่ย",       val:avgYears,        unit:"ปี", sub:"ค่าเฉลี่ยองค์กร",               alert:false},
     {label:"ถูก Action แล้ว",     val:actioned,        unit:"คน", sub:`จาก ${atRisk.length} คน`,      alert:false},
     {label:"Grade สูงสุดที่เสี่ยง",val:`G${topG}`,    unit:"",   sub:SUBGRADES.find(s=>s.grade===topG)?.position||"", alert:true},
   ];
 
-  const kpiCols = compact ? 3 : 6;
+  const kpiCols = compact ? 2 : 4;
+  // Extra compensation for high DPI / Windows display scaling (e.g. 150%).
+  const dpiComp = dpr >= 1.45 ? 0.9 : dpr >= 1.2 ? 0.95 : 1;
+  const fitScale = compact ? 1 : Math.min(1, cw / 1320, vh / 1080) * dpiComp;
+  const fitWidth = `${(100 / fitScale).toFixed(3)}%`;
 
   return (
-    <div ref={containerRef} style={{background:`linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)`,minHeight:"100vh",fontFamily:"'Sarabun',sans-serif",padding: compact?"16px 12px":"28px 24px",boxSizing:"border-box"}}>
+    <div ref={containerRef} style={{background:`linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)`,minHeight:"100dvh",fontFamily:"'Sarabun',sans-serif",padding: compact?"16px 12px":"28px 24px",boxSizing:"border-box",overflowX:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 
+      <div style={{width:fitWidth,transform:`scale(${fitScale})`,transformOrigin:"top center",margin:"0 auto"}}>
       <div style={{maxWidth:1200,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* ── HEADER ── */}
@@ -338,6 +383,8 @@ export default function App() {
                 <div style={{color:"#aab3cc",marginBottom:2}}>Sub-Grade: <b style={{color:"#fff"}}>{tooltip.e.subgrade}</b></div>
                 <div style={{color:"#aab3cc",marginBottom:6,fontSize:fs(11)}}>{SUBGRADES[tooltip.e.yIdx].position}</div>
                 <div style={{color:C.orange,fontWeight:700,fontSize:fs(16)}}>{tooltip.e.years} <span style={{fontSize:fs(12),color:"#7a8aaa",fontWeight:400}}>ปี อายุงาน</span></div>
+                <div style={{color:"#60a5fa",fontWeight:700,fontSize:fs(12),marginTop:3}}>Performance: {tooltip.e.performance}/5</div>
+                <div style={{marginTop:4,fontSize:fs(10),fontWeight:700,color:PRIORITY_META[getPriorityTier(tooltip.e)].color}}>{PRIORITY_META[getPriorityTier(tooltip.e)].label}</div>
                 <div style={{color:"#555e7a",fontSize:fs(10),marginTop:7,paddingTop:6,borderTop:"1px solid #2e3a5a"}}>คลิกเพื่อวาง Action Plan</div>
               </div>
             )}
@@ -365,6 +412,8 @@ export default function App() {
                 </div>
                 <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                   <span style={{fontSize:fs(12),color:C.orange,fontWeight:700,background:`${C.orange}25`,padding:"3px 9px",borderRadius:20}}>⏱ {selEmp.years} ปี</span>
+                  <span style={{fontSize:fs(12),color:"#93c5fd",fontWeight:700,background:"#1e3a8a40",padding:"3px 9px",borderRadius:20}}>📊 {selEmp.performance}/5</span>
+                  <span style={{fontSize:fs(12),color:PRIORITY_META[getPriorityTier(selEmp)].color,fontWeight:700,background:PRIORITY_META[getPriorityTier(selEmp)].bg,padding:"3px 9px",borderRadius:20}}>{PRIORITY_META[getPriorityTier(selEmp)].label}</span>
                   {isAtRisk(selEmp)&&<span style={{fontSize:fs(12),color:"#fca5a5",fontWeight:700,background:"#b91c1c40",padding:"3px 9px",borderRadius:20}}>▲ น่าเป็นห่วง</span>}
                 </div>
               </div>
@@ -397,6 +446,16 @@ export default function App() {
           )}
         </div>
 
+        <div style={{background:C.surface,borderRadius:10,padding:"14px 16px",border:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontSize:fs(12),fontWeight:700,color:"#fff"}}>Executive Priority View</div>
+            <div style={{fontSize:fs(10),color:C.sub,marginTop:3}}>เปิดหน้าวิเคราะห์ลำดับ Action จากอายุงาน + ผลงานปีที่ผ่านมา</div>
+          </div>
+          <Link to="/executive-priority" style={{textDecoration:"none",background:C.orange,color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:fs(11),fontWeight:700,whiteSpace:"nowrap"}}>
+            ไปหน้า Executive Priority
+          </Link>
+        </div>
+
         {/* ── GRADE SUMMARY ── */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
           {[1,2,3,4,5,6].map(g=>{
@@ -419,6 +478,7 @@ export default function App() {
           <b style={{color:C.sub}}>หมายเหตุ:</b> แต่ละจุดแทนพนักงาน 1 คน · ● น้ำเงิน = พนักงานทั่วไป · ▲ ส้ม = กลุ่มน่าเป็นห่วง (อายุงาน ≥ 10 ปี · Grade 1–3) · ● เขียว = ถูก Action แล้ว · เส้นประส้ม = เกณฑ์ 10 ปี
         </div>
 
+      </div>
       </div>
     </div>
   );
