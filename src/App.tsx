@@ -92,8 +92,6 @@ const PRIORITY_META = {
 export default function App() {
   const containerRef = useRef(null);
   const [cw, setCw] = useState(900);
-  const [vh, setVh] = useState(typeof window !== "undefined" ? window.innerHeight : 900);
-  const [dpr, setDpr] = useState(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1);
 
   useEffect(() => {
     const obs = new ResizeObserver(entries => {
@@ -101,15 +99,6 @@ export default function App() {
     });
     if (containerRef.current) obs.observe(containerRef.current);
     return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const onResize = () => {
-      setVh(window.innerHeight);
-      setDpr(window.devicePixelRatio || 1);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const [hovered,setHovered] = useState<number | null>(null);
@@ -179,16 +168,11 @@ export default function App() {
   ];
 
   const kpiCols = compact ? 2 : 4;
-  // Extra compensation for high DPI / Windows display scaling (e.g. 150%).
-  const dpiComp = dpr >= 1.45 ? 0.9 : dpr >= 1.2 ? 0.95 : 1;
-  const fitScale = compact ? 1 : Math.min(1, cw / 1320, vh / 1080) * dpiComp;
-  const fitWidth = `${(100 / fitScale).toFixed(3)}%`;
 
   return (
     <div ref={containerRef} style={{background:`linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)`,minHeight:"100dvh",fontFamily:"'Sarabun',sans-serif",padding: compact?"16px 12px":"28px 24px",boxSizing:"border-box",overflowX:"hidden"}}>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 
-      <div style={{width:fitWidth,transform:`scale(${fitScale})`,transformOrigin:"top center",margin:"0 auto"}}>
       <div style={{maxWidth:1200,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
 
         {/* ── HEADER ── */}
@@ -483,7 +467,6 @@ export default function App() {
           <b style={{color:C.sub}}>หมายเหตุ:</b> แต่ละจุดแทนพนักงาน 1 คน · ● น้ำเงิน = พนักงานทั่วไป · ▲ ส้ม = กลุ่มน่าเป็นห่วง (อายุงาน ≥ 10 ปี · Grade 1–3) · ● เขียว = ถูก Action แล้ว · เส้นประส้ม = เกณฑ์ 10 ปี
         </div>
 
-      </div>
       </div>
     </div>
   );
