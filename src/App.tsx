@@ -54,8 +54,17 @@ export default function App() {
   const [riskOpen,setRisk]   = useState(false);
   const [saving,setSaving]   = useState(false);
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => { loadActions().then(setActs); }, []);
+
+  const matchSearch = (e: typeof ALL_EMP[0], q: string) => {
+    const t = q.trim().toLowerCase();
+    if (!t) return false;
+    return String(e.id).includes(t) || `พนักงาน #${e.id}`.toLowerCase().includes(t);
+  };
+  const searchActive = searchQuery.trim().length > 0;
+  const searchMatches = searchActive ? ALL_EMP.filter(e => matchSearch(e, searchQuery)) : [];
 
   // responsive breakpoints
   const compact = cw < 700;
@@ -272,16 +281,37 @@ export default function App() {
           ))}
           <div style={{width:1,height:18,background:C.border,margin:"0 2px"}}/>
           <Pill active={onlyRisk} color={C.orange} onClick={()=>setOnly(p=>!p)}>▲ กลุ่มเสี่ยง</Pill>
-          <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
-              <svg width="12" height="11"><polygon points="6,1 11,10 1,10" fill={C.orange}/></svg>น่าเป็นห่วง
-            </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
-              <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={C.blueLight} fillOpacity={0.8}/></svg>ทั่วไป
-            </span>
-            <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
-              <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1a7340"/></svg>Action แล้ว
-            </span>
+          <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {/* search box */}
+            <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a2644",border:`1.5px solid ${searchActive ? C.orange : C.border}`,borderRadius:8,padding:"4px 10px"}}>
+              <span style={{fontSize:fs(12),color:C.gray}}>🔍</span>
+              <input
+                type="text"
+                placeholder="ค้นหา #ID หรือชื่อ…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{background:"transparent",border:"none",outline:"none",color:"#fff",fontSize:fs(11),width:130,fontFamily:"'Sarabun',sans-serif"}}
+              />
+              {searchActive && (
+                <button onClick={() => setSearchQuery("")} style={{background:"none",border:"none",color:C.gray,cursor:"pointer",padding:0,fontSize:fs(12),lineHeight:1}}>✕</button>
+              )}
+            </div>
+            {searchActive && (
+              <span style={{fontSize:fs(10),color:searchMatches.length>0?C.orange:"#94a3b8",fontWeight:700}}>
+                {searchMatches.length > 0 ? `พบ ${searchMatches.length} คน` : "ไม่พบ"}
+              </span>
+            )}
+            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+              <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+                <svg width="12" height="11"><polygon points="6,1 11,10 1,10" fill={C.orange}/></svg>น่าเป็นห่วง
+              </span>
+              <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+                <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill={C.blueLight} fillOpacity={0.8}/></svg>ทั่วไป
+              </span>
+              <span style={{display:"flex",alignItems:"center",gap:5,fontSize:fs(12),color:C.sub}}>
+                <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1a7340"/></svg>Action แล้ว
+              </span>
+            </div>
           </div>
         </div>
 
@@ -324,24 +354,36 @@ export default function App() {
                   </>;
                 })()}
 
-                {/* dots */}
-                {dots.map(e=>{
-                  const cx=xSc(e.years), cy=ySc(e.yPos);
+                {/* dots — draw dimmed first, then highlighted on top */}
+                {[...dots].sort((a,b)=>{
+                  const aMatch=searchActive&&matchSearch(a,searchQuery);
+                  const bMatch=searchActive&&matchSearch(b,searchQuery);
+                  return (aMatch?1:0)-(bMatch?1:0);
+                }).map(e=>{
+                  const dotX=xSc(e.years), dotY=ySc(e.yPos);
                   const risk=isAtRisk(e), isHov=hovered===e.id, isSel=selEmp?.id===e.id;
                   const hasAct=(acts[e.id]||[]).length>0;
-                  const r=isHov||isSel?8:risk?6.5:5;
+                  const isSearchHit=searchActive&&matchSearch(e,searchQuery);
+                  const isDimmed=searchActive&&!isSearchHit&&!isHov&&!isSel;
+                  const r=isSearchHit?10:isHov||isSel?8:risk?6.5:5;
                   return (
                     <g key={e.id} style={{cursor:"pointer"}}
-                      onMouseEnter={()=>{setHovered(e.id);setTooltip({e,cx,cy});}}
+                      onMouseEnter={()=>{setHovered(e.id);setTooltip({e,cx:dotX,cy:dotY});}}
                       onMouseLeave={()=>{setHovered(null);setTooltip(null);}}
                       onClick={()=>setSel(selEmp?.id===e.id?null:e)}>
-                      {risk&&(isHov||isSel)&&<circle cx={cx} cy={cy+r*0.15} r={r*1.8} fill={C.orange} fillOpacity={0.12}/>}
+                      {/* search hit glow */}
+                      {isSearchHit&&<circle cx={dotX} cy={dotY} r={r+6} fill="#fff" fillOpacity={0.18}/>}
+                      {risk&&(isHov||isSel||isSearchHit)&&<circle cx={dotX} cy={dotY+r*0.15} r={r*1.8} fill={C.orange} fillOpacity={0.15}/>}
                       {risk
-                        ? <polygon points={`${cx},${cy-r} ${cx+r*0.87},${cy+r*0.5} ${cx-r*0.87},${cy+r*0.5}`}
-                            fill={C.orange} fillOpacity={isHov||isSel?1:0.85} stroke={isSel?"#fff":"none"} strokeWidth={1.5}/>
-                        : <circle cx={cx} cy={cy} r={isHov||isSel?r:4.5}
-                            fill={GRADE_DOT[e.grade]} fillOpacity={isHov||isSel?1:0.62} stroke={isSel?"#fff":"none"} strokeWidth={1.5}/>}
-                      {hasAct&&<circle cx={cx+(risk?5:4)} cy={cy-(risk?5:4)} r={3} fill="#1a7340" stroke="#fff" strokeWidth={1}/>}
+                        ? <polygon points={`${dotX},${dotY-r} ${dotX+r*0.87},${dotY+r*0.5} ${dotX-r*0.87},${dotY+r*0.5}`}
+                            fill={C.orange} fillOpacity={isDimmed?0.15:isHov||isSel||isSearchHit?1:0.85}
+                            stroke={isSearchHit?"#fff":isSel?"#fff":"none"} strokeWidth={1.5}/>
+                        : <circle cx={dotX} cy={dotY} r={isHov||isSel||isSearchHit?r:4.5}
+                            fill={GRADE_DOT[e.grade]} fillOpacity={isDimmed?0.12:isHov||isSel||isSearchHit?1:0.62}
+                            stroke={isSearchHit?"#fff":isSel?"#fff":"none"} strokeWidth={1.5}/>}
+                      {hasAct&&!isDimmed&&<circle cx={dotX+(risk?5:4)} cy={dotY-(risk?5:4)} r={3} fill="#1a7340" stroke="#fff" strokeWidth={1}/>}
+                      {/* label for search hit */}
+                      {isSearchHit&&<text x={dotX} y={dotY-r-4} textAnchor="middle" fontSize={fs(10)} fontWeight={700} fill="#fff" stroke={C.blueDark} strokeWidth={3} paintOrder="stroke">#{e.id}</text>}
                     </g>
                   );
                 })}

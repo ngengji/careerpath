@@ -47,9 +47,18 @@ export default function ExecutivePriorityPage() {
   const [acts, setActs] = useState<Record<number, string[]>>({});
   const [hoveredEmp, setHoveredEmp] = useState<Employee | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState("");
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { loadActions().then(setActs); }, []);
+
+  const matchSearch = (e: Employee, q: string) => {
+    const t = q.trim().toLowerCase();
+    if (!t) return false;
+    return String(e.id).includes(t) || `พนักงาน #${e.id}`.toLowerCase().includes(t);
+  };
+  const searchActive = searchQuery.trim().length > 0;
+  const searchMatches = searchActive ? ALL_EMP.filter(e => matchSearch(e, searchQuery)) : [];
 
   const priorityGroups = {
     P1: ALL_EMP.filter((e) => getPriorityTier(e) === "P1"),
@@ -89,6 +98,25 @@ export default function ExecutivePriorityPage() {
                 </button>
               ))}
             </div>
+            {/* search box */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#1a2644", border: `1.5px solid ${searchActive ? C.orange : C.border}`, borderRadius: 8, padding: "5px 10px" }}>
+              <span style={{ fontSize: 11, color: "#7a90b8" }}>🔍</span>
+              <input
+                type="text"
+                placeholder="ค้นหา #ID หรือชื่อ…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 11, width: 130, fontFamily: "'Sarabun',sans-serif" }}
+              />
+              {searchActive && (
+                <button onClick={() => setSearchQuery("")} style={{ background: "none", border: "none", color: "#7a90b8", cursor: "pointer", padding: 0, fontSize: 12 }}>✕</button>
+              )}
+            </div>
+            {searchActive && (
+              <div style={{ fontSize: 10, color: searchMatches.length > 0 ? C.orange : "#94a3b8", fontWeight: 700, textAlign: "right" }}>
+                {searchMatches.length > 0 ? `พบ ${searchMatches.length} คน` : "ไม่พบ"}
+              </div>
+            )}
             <Link to="/" style={{ textDecoration: "none", background: "#fff", color: C.blue, padding: "8px 12px", borderRadius: 8, fontWeight: 700, fontSize: 12 }}>
               กลับหน้า Overview
             </Link>
@@ -156,12 +184,14 @@ export default function ExecutivePriorityPage() {
                     <text x={CPAD.left - 5} y={cy(v) + 3} textAnchor="end" fontSize={9} fill={C.chartSub}>{v.toFixed(1)}</text>
                   </g>
                 ))}
-                {/* dots — P3/P2 first, then at-risk, then P1 on top */}
+                {/* dots — P3/P2 first, then at-risk, then P1, then search hits on top */}
                 {[...ALL_EMP]
                   .sort((a, b) => {
+                    const aHit = searchActive && matchSearch(a, searchQuery) ? 3 : 0;
+                    const bHit = searchActive && matchSearch(b, searchQuery) ? 3 : 0;
+                    const order = { P3: 0, P2: 1, P1: 2 } as const;
                     const ta = getPriorityTier(a), tb = getPriorityTier(b);
-                    const order = { P3: 0, P2: 1, P1: 2 };
-                    return order[ta] - order[tb];
+                    return (order[ta] + aHit) - (order[tb] + bHit);
                   })
                   .map((e) => {
                     const tier = getPriorityTier(e) as keyof typeof PRIORITY_META;
@@ -169,30 +199,38 @@ export default function ExecutivePriorityPage() {
                     const risk = isAtRisk(e);
                     const rank = p1Ranks.get(e.id);
                     const isHov = hoveredEmp?.id === e.id;
+                    const isSearchHit = searchActive && matchSearch(e, searchQuery);
+                    const isDimmed = searchActive && !isSearchHit;
                     const dotX = cx(e.years), dotY = cy(e.performance);
-                    const r = rank ? 5.5 : risk ? 5 : 3.8;
+                    const r = isSearchHit ? 8 : rank ? 5.5 : risk ? 5 : 3.8;
                     // at-risk = orange (matches overview page), P1 = red, non-at-risk = tier color
                     const color = rank ? "#b91c1c" : risk ? C.orange : PRIORITY_META[tier].color;
                     return (
                       <g key={e.id} style={{ cursor: "pointer" }} onMouseEnter={() => setHoveredEmp(e)}>
-                        {/* glow for hovered */}
-                        {isHov && <circle cx={dotX} cy={dotY} r={r + 5} fill={color} fillOpacity={0.18} />}
+                        {/* search hit glow */}
+                        {isSearchHit && <circle cx={dotX} cy={dotY} r={r + 6} fill="#fff" fillOpacity={0.2} />}
+                        {/* hover glow */}
+                        {isHov && !isSearchHit && <circle cx={dotX} cy={dotY} r={r + 5} fill={color} fillOpacity={0.18} />}
                         {/* shape: triangle for at-risk (grade ≤ 3), circle for others */}
                         {risk
                           ? <polygon
                               points={`${dotX},${dotY - r} ${dotX + r * 0.87},${dotY + r * 0.5} ${dotX - r * 0.87},${dotY + r * 0.5}`}
-                              fill={color} fillOpacity={isHov ? 1 : 0.8}
-                              stroke={rank ? "#fff" : "none"} strokeWidth={rank ? 1.2 : 0}
+                              fill={color} fillOpacity={isDimmed ? 0.15 : isHov || isSearchHit ? 1 : 0.8}
+                              stroke={isSearchHit ? "#fff" : rank ? "#fff" : "none"} strokeWidth={isSearchHit ? 1.5 : rank ? 1.2 : 0}
                             />
-                          : <circle cx={dotX} cy={dotY} r={r} fill={color} fillOpacity={isHov ? 1 : 0.65} />
+                          : <circle cx={dotX} cy={dotY} r={r} fill={color} fillOpacity={isDimmed ? 0.12 : isHov || isSearchHit ? 1 : 0.65}
+                              stroke={isSearchHit ? "#fff" : "none"} strokeWidth={1.5} />
                         }
                         {/* action dot */}
-                        {hasAct && <circle cx={dotX + r * 0.75} cy={dotY - r * 0.75} r={2.2} fill="#1a7340" stroke="#fff" strokeWidth={0.8} />}
+                        {hasAct && !isDimmed && <circle cx={dotX + r * 0.75} cy={dotY - r * 0.75} r={2.2} fill="#1a7340" stroke="#fff" strokeWidth={0.8} />}
                         {/* rank label for P1 */}
-                        {rank && (
-                          <text x={dotX} y={dotY + 3.5} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" pointerEvents="none">
-                            {rank}
-                          </text>
+                        {rank && !isSearchHit && (
+                          <text x={dotX} y={dotY + 3.5} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" pointerEvents="none">{rank}</text>
+                        )}
+                        {/* search hit label */}
+                        {isSearchHit && (
+                          <text x={dotX} y={dotY - r - 4} textAnchor="middle" fontSize={8} fontWeight={700} fill="#fff"
+                            stroke="#1a2644" strokeWidth={3} paintOrder="stroke" pointerEvents="none">#{e.id}</text>
                         )}
                       </g>
                     );
@@ -264,7 +302,7 @@ export default function ExecutivePriorityPage() {
                 const empActs = acts[e.id] || [];
                 const hasAct = empActs.length > 0;
                 return (
-                  <div key={e.id} style={{ background: hasAct ? "#f0fdf4" : "#fff1f2", border: `1px solid ${hasAct ? "#bbf7d0" : "#fecdd3"}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <div key={e.id} style={{ background: matchSearch(e, searchQuery) ? "#fefce8" : hasAct ? "#f0fdf4" : "#fff1f2", border: `2px solid ${matchSearch(e, searchQuery) ? C.orange : hasAct ? "#bbf7d0" : "#fecdd3"}`, borderRadius: 8, padding: "8px 10px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "30px 1fr auto", gap: 8, alignItems: "center" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#9f1239" }}>#{idx + 1}</div>
                       <div style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</div>
@@ -293,7 +331,7 @@ export default function ExecutivePriorityPage() {
               const empActs = acts[e.id] || [];
               const hasAct = empActs.length > 0;
               return (
-                <div key={e.id} style={{ background: hasAct ? "#f0fdf4" : "#fffbeb", border: `1px solid ${hasAct ? "#bbf7d0" : "#fde68a"}`, borderRadius: 8, padding: "8px 10px" }}>
+                <div key={e.id} style={{ background: matchSearch(e, searchQuery) ? "#fefce8" : hasAct ? "#f0fdf4" : "#fffbeb", border: `${matchSearch(e, searchQuery) ? "2px" : "1px"} solid ${matchSearch(e, searchQuery) ? C.orange : hasAct ? "#bbf7d0" : "#fde68a"}`, borderRadius: 8, padding: "8px 10px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#c2410c" }}>{e.performance}/5 · {e.years}ปี</span>
