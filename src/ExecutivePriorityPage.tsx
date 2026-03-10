@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 
 const C = {
@@ -29,57 +29,34 @@ const SUBGRADES = [
 ];
 
 const DIST: Record<string, number> = {
-  "1A": 30,
-  "2B": 28,
-  "2A": 22,
-  "3C": 22,
-  "3B": 18,
-  "3A": 14,
-  "4C": 12,
-  "4B": 9,
-  "4A": 7,
-  "5B": 6,
-  "5A": 4,
-  "6B": 3,
-  "6A": 2,
+  "1A": 30, "2B": 28, "2A": 22, "3C": 22, "3B": 18, "3A": 14,
+  "4C": 12, "4B": 9, "4A": 7, "5B": 6, "5A": 4, "6B": 3, "6A": 2,
 };
 
 const YEAR_RANGE: Record<string, [number, number]> = {
-  "1A": [0, 5],
-  "2B": [1, 6],
-  "2A": [2, 8],
-  "3C": [2, 7],
-  "3B": [3, 10],
-  "3A": [4, 13],
-  "4C": [5, 10],
-  "4B": [6, 12],
-  "4A": [7, 14],
-  "5B": [8, 13],
-  "5A": [9, 15],
-  "6B": [10, 15],
-  "6A": [11, 15],
+  "1A": [0, 5], "2B": [1, 6], "2A": [2, 8], "3C": [2, 7], "3B": [3, 10],
+  "3A": [4, 13], "4C": [5, 10], "4B": [6, 12], "4A": [7, 14],
+  "5B": [8, 13], "5A": [9, 15], "6B": [10, 15], "6A": [11, 15],
 };
 
 const PRIORITY_META = {
   P1: { label: "P1 ความพร้อมสูง", color: "#b91c1c", bg: "#fee2e2", action: "Top 5: Performance สูง + Tenure สูง + ตำแหน่งต่ำ" },
-  P2: { label: "P2 ศักยภาพดี", color: "#c2410c", bg: "#ffedd5", action: "วางแผนเร่งพัฒนาเพื่อขึ้นกลุ่มนำ" },
-  P3: { label: "P3 พัฒนาต่อ", color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและยกระดับ performance" },
+  P2: { label: "P2 ศักยภาพดี",    color: "#c2410c", bg: "#ffedd5", action: "วางแผนเร่งพัฒนาเพื่อขึ้นกลุ่มนำ" },
+  P3: { label: "P3 พัฒนาต่อ",     color: "#1d4ed8", bg: "#dbeafe", action: "ติดตามรายครึ่งปีและยกระดับ performance" },
 };
 
-type Employee = {
-  id: number;
-  subgrade: string;
-  grade: number;
-  years: number;
-  performance: number;
-};
+const ACTION_TAGS = [
+  { key: "promote",    label: "เลื่อนตำแหน่ง",      color: "#1a7340", bg: "#edfaf3" },
+  { key: "succession", label: "วางแผน Succession",   color: "#394A76", bg: "#eef1f8" },
+  { key: "retention",  label: "Retention Interview", color: "#b91c1c", bg: "#fef2f2" },
+  { key: "stretch",    label: "Stretch Assignment",  color: "#EC5924", bg: "#fff4f0" },
+];
+
+type Employee = { id: number; subgrade: string; grade: number; years: number; performance: number; };
 
 function seededRandom(seed: number) {
   let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 }
 
 function generateEmployees() {
@@ -90,16 +67,10 @@ function generateEmployees() {
   const counts: Record<string, number> = {};
   const emps: Employee[] = [];
   let id = 1;
-
   SUBGRADES.forEach((sg, i) => {
-    if (i < SUBGRADES.length - 1) {
-      counts[sg.key] = Math.round((DIST[sg.key] / tw) * total);
-      rem -= counts[sg.key];
-    } else {
-      counts[sg.key] = rem;
-    }
+    if (i < SUBGRADES.length - 1) { counts[sg.key] = Math.round((DIST[sg.key] / tw) * total); rem -= counts[sg.key]; }
+    else { counts[sg.key] = rem; }
   });
-
   SUBGRADES.forEach((sg) => {
     const [mn, mx] = YEAR_RANGE[sg.key];
     for (let i = 0; i < counts[sg.key]; i++) {
@@ -109,18 +80,15 @@ function generateEmployees() {
       emps.push({ id: id++, subgrade: sg.key, grade: sg.grade, years, performance });
     }
   });
-
   return emps;
 }
 
 const ALL_EMP = generateEmployees();
 
 const P1_IDS = new Set(
-  [...ALL_EMP]
-    .filter((e) => e.grade <= 3 && e.years >= 10)
+  [...ALL_EMP].filter((e) => e.grade <= 3 && e.years >= 10)
     .sort((a, b) => b.performance - a.performance || b.years - a.years)
-    .slice(0, 5)
-    .map((e) => e.id)
+    .slice(0, 5).map((e) => e.id)
 );
 
 const getPriorityTier = (e: Employee) => {
@@ -129,8 +97,47 @@ const getPriorityTier = (e: Employee) => {
   return "P3";
 };
 
+// ── Action badge component ──────────────────────────────────────────────────
+function ActionBadges({ empActs }: { empActs: string[] }) {
+  if (empActs.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 5 }}>
+      {empActs.map(k => {
+        const a = ACTION_TAGS.find(x => x.key === k);
+        if (!a) return null;
+        return (
+          <span key={k} style={{ fontSize: 10, fontWeight: 700, color: a.color, background: a.bg, padding: "2px 7px", borderRadius: 20, border: `1px solid ${a.color}30` }}>
+            {a.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ExecutivePriorityPage() {
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
+  const [acts, setActs] = useState<Record<number, string[]>>({});
+
+  // โหลด actions — API ก่อน ถ้าไม่มีใช้ localStorage
+  useEffect(() => {
+    fetch("/api/actions")
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        const parsed: Record<number, string[]> = {};
+        for (const [k, v] of Object.entries(data)) parsed[Number(k)] = v as string[];
+        setActs(parsed);
+      })
+      .catch(() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
+          const parsed: Record<number, string[]> = {};
+          for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
+          setActs(parsed);
+        } catch {}
+      });
+  }, []);
+
   const priorityGroups = {
     P1: ALL_EMP.filter((e) => getPriorityTier(e) === "P1"),
     P2: ALL_EMP.filter((e) => getPriorityTier(e) === "P2"),
@@ -141,15 +148,17 @@ export default function ExecutivePriorityPage() {
     .sort((a, b) => b.performance - a.performance || b.years - a.years)
     .slice(0, 5);
 
-  const onZoomChange = (z: number) => {
-    setZoomLevel(z);
-    applyZoom(z);
-  };
+  // จำนวนที่มี action แล้วในแต่ละกลุ่ม
+  const actionedCount = (list: Employee[]) => list.filter(e => (acts[e.id] || []).length > 0).length;
+
+  const onZoomChange = (z: number) => { setZoomLevel(z); applyZoom(z); };
 
   return (
     <div style={{ background: "linear-gradient(160deg,#1a2644 0%,#222f58 60%,#1e2d50 100%)", minHeight: "100dvh", fontFamily: "'Sarabun',sans-serif", padding: "24px 20px", boxSizing: "border-box" }}>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {/* Header */}
         <div style={{ background: C.surface, borderRadius: 12, padding: "18px 22px", borderBottom: `3px solid ${C.orange}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 11, color: C.sub, marginBottom: 4 }}>Executive Decision View</div>
@@ -159,20 +168,7 @@ export default function ExecutivePriorityPage() {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
               {ZOOM_OPTIONS.map((z) => (
-                <button
-                  key={z}
-                  onClick={() => onZoomChange(z)}
-                  style={{
-                    border: `1px solid ${zoomLevel === z ? C.orange : C.border}`,
-                    background: zoomLevel === z ? C.orange : "transparent",
-                    color: zoomLevel === z ? "#fff" : C.sub,
-                    borderRadius: 6,
-                    padding: "3px 7px",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    cursor: "pointer"
-                  }}
-                >
+                <button key={z} onClick={() => onZoomChange(z)} style={{ border: `1px solid ${zoomLevel === z ? C.orange : C.border}`, background: zoomLevel === z ? C.orange : "transparent", color: zoomLevel === z ? "#fff" : C.sub, borderRadius: 6, padding: "3px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>
                   {Math.round(z * 100)}%
                 </button>
               ))}
@@ -183,16 +179,31 @@ export default function ExecutivePriorityPage() {
           </div>
         </div>
 
+        {/* KPI cards — เพิ่ม Action Progress */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10 }}>
-          {(["P1", "P2", "P3"] as const).map((k) => (
-            <div key={k} style={{ background: "#fff", borderRadius: 10, padding: "12px 13px", borderTop: `3px solid ${PRIORITY_META[k].color}` }}>
-              <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>{PRIORITY_META[k].label}</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: PRIORITY_META[k].color }}>{priorityGroups[k].length}</div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{PRIORITY_META[k].action}</div>
-            </div>
-          ))}
+          {(["P1", "P2", "P3"] as const).map((k) => {
+            const total = priorityGroups[k].length;
+            const actioned = actionedCount(priorityGroups[k]);
+            const pct = total > 0 ? Math.round(actioned / total * 100) : 0;
+            return (
+              <div key={k} style={{ background: "#fff", borderRadius: 10, padding: "12px 13px", borderTop: `3px solid ${PRIORITY_META[k].color}` }}>
+                <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>{PRIORITY_META[k].label}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: PRIORITY_META[k].color }}>{total}</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, marginBottom: 8 }}>{PRIORITY_META[k].action}</div>
+                {/* Progress bar */}
+                <div style={{ fontSize: 10, color: "#64748b", marginBottom: 4, display: "flex", justifyContent: "space-between" }}>
+                  <span>Action Progress</span>
+                  <span style={{ fontWeight: 700, color: actioned > 0 ? "#1a7340" : "#94a3b8" }}>{actioned}/{total} ({pct}%)</span>
+                </div>
+                <div style={{ height: 5, borderRadius: 3, background: "#e2e8f0", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: actioned > 0 ? "#1a7340" : "#e2e8f0", borderRadius: 3, transition: "width 0.4s" }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
+        {/* Matrix + Top P1 */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
@@ -200,11 +211,9 @@ export default function ExecutivePriorityPage() {
               <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = Top 5 (Grade ≤ 3, อายุงาน ≥ 10) เรียง performance สูงก่อน</div>
             </div>
             {(() => {
-              const W = 420;
-              const H = 290;
+              const W = 420, H = 290;
               const pad = { top: 20, right: 12, bottom: 36, left: 36 };
-              const iW = W - pad.left - pad.right;
-              const iH = H - pad.top - pad.bottom;
+              const iW = W - pad.left - pad.right, iH = H - pad.top - pad.bottom;
               const x = (v: number) => pad.left + (v / 15) * iW;
               const y = (v: number) => pad.top + iH - ((v - 1) / 4) * iH;
               return (
@@ -224,32 +233,79 @@ export default function ExecutivePriorityPage() {
                   ))}
                   {ALL_EMP.map((e) => {
                     const tier = getPriorityTier(e) as keyof typeof PRIORITY_META;
-                    return <circle key={e.id} cx={x(e.years)} cy={y(e.performance)} r={3.6} fill={PRIORITY_META[tier].color} fillOpacity={0.68} />;
+                    const hasAct = (acts[e.id] || []).length > 0;
+                    return (
+                      <g key={e.id}>
+                        <circle cx={x(e.years)} cy={y(e.performance)} r={3.6} fill={PRIORITY_META[tier].color} fillOpacity={0.68} />
+                        {hasAct && <circle cx={x(e.years) + 3.5} cy={y(e.performance) - 3.5} r={2.2} fill="#1a7340" stroke="#fff" strokeWidth={0.8} />}
+                      </g>
+                    );
                   })}
                   <text x={x(10) + 5} y={pad.top + 10} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Candidate Pool (Tenure ≥ 10)</text>
                   <text x={pad.left + iW / 2} y={H - 3} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
                   <text x={12} y={pad.top + iH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${pad.top + iH / 2})`}>Performance</text>
+                  {/* legend */}
+                  <circle cx={pad.left + iW - 60} cy={pad.top + iH - 8} r={3} fill="#1a7340" />
+                  <text x={pad.left + iW - 55} y={pad.top + iH - 5} fontSize={8} fill={C.chartSub}>มี Action แล้ว</text>
                 </svg>
               );
             })()}
           </div>
 
+          {/* Top P1 with action badges */}
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Top Priority Candidates (P1)</div>
               <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>เรียงจาก performance สูงสุดก่อน แล้วดู tenure สูง</div>
             </div>
             <div style={{ display: "grid", gap: 7 }}>
-              {topPriority.map((e, idx) => (
-                <div key={e.id} style={{ background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 8, padding: "8px 10px", display: "grid", gridTemplateColumns: "30px 1fr auto", gap: 8, alignItems: "center" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#9f1239" }}>#{idx + 1}</div>
-                  <div style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#9f1239" }}>{e.performance}/5 · {e.years} ปี</div>
-                </div>
-              ))}
+              {topPriority.map((e, idx) => {
+                const empActs = acts[e.id] || [];
+                const hasAct = empActs.length > 0;
+                return (
+                  <div key={e.id} style={{ background: hasAct ? "#f0fdf4" : "#fff1f2", border: `1px solid ${hasAct ? "#bbf7d0" : "#fecdd3"}`, borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "30px 1fr auto", gap: 8, alignItems: "center" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#9f1239" }}>#{idx + 1}</div>
+                      <div style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#9f1239" }}>{e.performance}/5 · {e.years} ปี</div>
+                        {hasAct
+                          ? <span style={{ fontSize: 10, background: "#1a7340", color: "#fff", padding: "1px 7px", borderRadius: 10, fontWeight: 700 }}>✓ Action</span>
+                          : <span style={{ fontSize: 10, background: "#f1f5f9", color: "#94a3b8", padding: "1px 7px", borderRadius: 10 }}>ยังไม่ได้ Action</span>}
+                      </div>
+                    </div>
+                    <ActionBadges empActs={empActs} />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
+
+        {/* P2 list with actions */}
+        <div style={{ background: "#fff", borderRadius: 12, padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", border: "1px solid #e0e4f0" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.chartInk, marginBottom: 10 }}>
+            P2 ศักยภาพดี — {actionedCount(priorityGroups.P2)}/{priorityGroups.P2.length} คนมี Action แล้ว
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 7 }}>
+            {priorityGroups.P2.map(e => {
+              const empActs = acts[e.id] || [];
+              const hasAct = empActs.length > 0;
+              return (
+                <div key={e.id} style={{ background: hasAct ? "#f0fdf4" : "#fffbeb", border: `1px solid ${hasAct ? "#bbf7d0" : "#fde68a"}`, borderRadius: 8, padding: "8px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#334155" }}>พนักงาน #{e.id} · {e.subgrade}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c2410c" }}>{e.performance}/5 · {e.years}ปี</span>
+                  </div>
+                  {hasAct
+                    ? <ActionBadges empActs={empActs} />
+                    : <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4 }}>ยังไม่ได้ Action</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
     </div>
   );
