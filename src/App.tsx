@@ -120,19 +120,23 @@ export default function App() {
   const [saving,setSaving]   = useState(false);
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
 
-  // โหลด actions จาก DB ตอน mount
+  // โหลด actions — API ก่อน ถ้าไม่มีใช้ localStorage (GitHub Pages)
   useEffect(() => {
     fetch("/api/actions")
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => {
-        // API คืน { "1": ["promote"], ... } key เป็น string แปลงเป็น number
         const parsed: Record<number, string[]> = {};
-        for (const [k, v] of Object.entries(data)) {
-          parsed[Number(k)] = v as string[];
-        }
+        for (const [k, v] of Object.entries(data)) parsed[Number(k)] = v as string[];
         setActs(parsed);
       })
-      .catch(() => {}); // fallback: ถ้า server ยังไม่ขึ้น ก็ใช้ state ว่างปล่าว
+      .catch(() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
+          const parsed: Record<number, string[]> = {};
+          for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
+          setActs(parsed);
+        } catch {}
+      });
   }, []);
 
   // responsive breakpoints
@@ -184,13 +188,21 @@ export default function App() {
       const current = prev[eid] || [];
       const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key];
       const updated = { ...prev, [eid]: next };
-      // บันทึกลง DB
+      // บันทึกลง DB (ถ้าไม่มี API ใช้ localStorage แทน)
       setSaving(true);
       fetch(`/api/actions/${eid}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actions: next }),
       })
+        .then(r => { if (!r.ok) throw new Error(); })
+        .catch(() => {
+          try {
+            const current = JSON.parse(localStorage.getItem("career_actions") || "{}");
+            if (next.length === 0) delete current[eid]; else current[eid] = next;
+            localStorage.setItem("career_actions", JSON.stringify(current));
+          } catch {}
+        })
         .finally(() => setSaving(false));
       return updated;
     });
