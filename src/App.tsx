@@ -372,7 +372,7 @@ export default function App() {
                 {/* y axis */}
                 {SUBGRADES.map((sg,i)=>{
                   const cnt=ALL_EMP.filter(e=>e.subgrade===sg.key).length;
-                  const isHigh=sg.grade>=4;
+                  const isHigh=sg.grade>=5;
                   return (
                     <g key={sg.key} transform={`translate(0,${ySc(i)})`}>
                       <line x1={-4} x2={0} stroke="#939598" strokeWidth={0.8}/>
