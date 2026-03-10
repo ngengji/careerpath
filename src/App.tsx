@@ -109,6 +109,12 @@ export default function App() {
 
   let dots = filterGrade ? ALL_EMP.filter(e=>e.grade===filterGrade) : ALL_EMP;
   if (onlyRisk) dots = dots.filter(isAtRisk);
+  // always show search hits even if filtered out by grade/risk
+  if (searchActive && searchMatches.length > 0) {
+    const dotsIds = new Set(dots.map(e => e.id));
+    const extra = searchMatches.filter(e => !dotsIds.has(e.id));
+    if (extra.length > 0) dots = [...dots, ...extra];
+  }
 
   const toggle = (eid: number, key: string) => {
     setActs(prev => {
