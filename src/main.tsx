@@ -4,6 +4,8 @@ import { HashRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 import ExecutivePriorityPage from './ExecutivePriorityPage'
 
+document.documentElement.style.zoom = '150%'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
