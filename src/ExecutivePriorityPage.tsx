@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ZOOM_OPTIONS, applyZoom, getSavedZoom } from "./zoom";
 import {
   ALL_EMP, getPriorityTier, PRIORITY_META, ACTION_TAGS,
-  loadActions, type Employee,
+  loadActions, isAtRisk, P1_IDS, type Employee,
 } from "./data";
 
 const C = {
@@ -34,9 +34,20 @@ function ActionBadges({ empActs }: { empActs: string[] }) {
   );
 }
 
+// chart helpers (module-level — no re-creation)
+const CW = 420, CH = 290;
+const CPAD = { top: 22, right: 14, bottom: 38, left: 38 };
+const CiW = CW - CPAD.left - CPAD.right;
+const CiH = CH - CPAD.top - CPAD.bottom;
+const cx = (v: number) => CPAD.left + (v / 15) * CiW;
+const cy = (v: number) => CPAD.top + CiH - ((v - 1) / 4) * CiH;
+
 export default function ExecutivePriorityPage() {
   const [zoomLevel, setZoomLevel] = useState(getSavedZoom());
   const [acts, setActs] = useState<Record<number, string[]>>({});
+  const [hoveredEmp, setHoveredEmp] = useState<Employee | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { loadActions().then(setActs); }, []);
 
@@ -49,6 +60,9 @@ export default function ExecutivePriorityPage() {
   const topPriority = [...priorityGroups.P1]
     .sort((a, b) => b.performance - a.performance || b.years - a.years)
     .slice(0, 5);
+
+  // rank map for P1 dots: id → 1-5
+  const p1Ranks = new Map(topPriority.map((e, i) => [e.id, i + 1]));
 
   // จำนวนที่มี action แล้วในแต่ละกลุ่ม
   const actionedCount = (list: Employee[]) => list.filter(e => (acts[e.id] || []).length > 0).length;
@@ -110,48 +124,130 @@ export default function ExecutivePriorityPage() {
           <div style={{ background: "#fff", borderRadius: 12, padding: "20px 16px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid #e0e4f0" }}>
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.chartInk }}>Priority Matrix: อายุงาน x Performance ปีล่าสุด</div>
-              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>P1 = Top 5 (Grade ≤ 3, อายุงาน ≥ 10) เรียง performance สูงก่อน</div>
+              <div style={{ fontSize: 10, color: C.chartSub, marginTop: 3 }}>
+                Zone สีแดง = <b>กลุ่มน่าเป็นห่วง</b> (Grade ≤ 3 + อายุงาน ≥ 10) · P1 = Top 5 เรียง Performance สูงก่อน · ▲ = Grade ≤ 3
+              </div>
             </div>
-            {(() => {
-              const W = 420, H = 290;
-              const pad = { top: 20, right: 12, bottom: 36, left: 36 };
-              const iW = W - pad.left - pad.right, iH = H - pad.top - pad.bottom;
-              const x = (v: number) => pad.left + (v / 15) * iW;
-              const y = (v: number) => pad.top + iH - ((v - 1) / 4) * iH;
-              return (
-                <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
-                  <rect x={x(10)} y={pad.top} width={W - pad.right - x(10)} height={iH} fill="#fee2e2" fillOpacity={0.35} rx={4} />
-                  {[0, 5, 10, 15].map((t) => (
-                    <g key={t}>
-                      <line x1={x(t)} y1={pad.top} x2={x(t)} y2={pad.top + iH} stroke={t === 10 ? "#f97316" : "#ebebeb"} strokeWidth={t === 10 ? 1.4 : 0.8} strokeDasharray={t === 10 ? "5 3" : ""} />
-                      <text x={x(t)} y={H - 16} textAnchor="middle" fontSize={9} fill={C.chartSub}>{t}</text>
-                    </g>
-                  ))}
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <g key={v}>
-                      <line x1={pad.left} y1={y(v)} x2={pad.left + iW} y2={y(v)} stroke="#ebebeb" strokeWidth={0.8} />
-                      <text x={pad.left - 5} y={y(v) + 3} textAnchor="end" fontSize={9} fill={C.chartSub}>{v.toFixed(1)}</text>
-                    </g>
-                  ))}
-                  {ALL_EMP.map((e) => {
+            <div ref={chartRef} style={{ position: "relative" }}>
+              <svg
+                width="100%" height={CH}
+                viewBox={`0 0 ${CW} ${CH}`}
+                style={{ display: "block", overflow: "visible" }}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const scaleX = CW / rect.width;
+                  const scaleY = CH / rect.height;
+                  setMousePos({ x: (e.clientX - rect.left) / scaleX, y: (e.clientY - rect.top) / scaleY });
+                }}
+                onMouseLeave={() => setHoveredEmp(null)}
+              >
+                {/* at-risk zone: Tenure ≥ 10 */}
+                <rect x={cx(10)} y={CPAD.top} width={CW - CPAD.right - cx(10)} height={CiH} fill="#fee2e2" fillOpacity={0.4} rx={4} />
+                {/* grid lines */}
+                {[0, 5, 10, 15].map((t) => (
+                  <g key={t}>
+                    <line x1={cx(t)} y1={CPAD.top} x2={cx(t)} y2={CPAD.top + CiH} stroke={t === 10 ? "#f97316" : "#ebebeb"} strokeWidth={t === 10 ? 1.5 : 0.8} strokeDasharray={t === 10 ? "5 3" : ""} />
+                    <text x={cx(t)} y={CH - 18} textAnchor="middle" fontSize={9} fill={C.chartSub}>{t}</text>
+                  </g>
+                ))}
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <g key={v}>
+                    <line x1={CPAD.left} y1={cy(v)} x2={CPAD.left + CiW} y2={cy(v)} stroke="#ebebeb" strokeWidth={0.8} />
+                    <text x={CPAD.left - 5} y={cy(v) + 3} textAnchor="end" fontSize={9} fill={C.chartSub}>{v.toFixed(1)}</text>
+                  </g>
+                ))}
+                {/* dots — P3/P2 first, then at-risk, then P1 on top */}
+                {[...ALL_EMP]
+                  .sort((a, b) => {
+                    const ta = getPriorityTier(a), tb = getPriorityTier(b);
+                    const order = { P3: 0, P2: 1, P1: 2 };
+                    return order[ta] - order[tb];
+                  })
+                  .map((e) => {
                     const tier = getPriorityTier(e) as keyof typeof PRIORITY_META;
                     const hasAct = (acts[e.id] || []).length > 0;
+                    const risk = isAtRisk(e);
+                    const rank = p1Ranks.get(e.id);
+                    const isHov = hoveredEmp?.id === e.id;
+                    const dotX = cx(e.years), dotY = cy(e.performance);
+                    const r = rank ? 5.5 : risk ? 5 : 3.8;
+                    const color = PRIORITY_META[tier].color;
                     return (
-                      <g key={e.id}>
-                        <circle cx={x(e.years)} cy={y(e.performance)} r={3.6} fill={PRIORITY_META[tier].color} fillOpacity={0.68} />
-                        {hasAct && <circle cx={x(e.years) + 3.5} cy={y(e.performance) - 3.5} r={2.2} fill="#1a7340" stroke="#fff" strokeWidth={0.8} />}
+                      <g key={e.id} style={{ cursor: "pointer" }} onMouseEnter={() => setHoveredEmp(e)}>
+                        {/* glow for hovered */}
+                        {isHov && <circle cx={dotX} cy={dotY} r={r + 5} fill={color} fillOpacity={0.18} />}
+                        {/* shape: triangle for at-risk (grade ≤ 3), circle for others */}
+                        {risk
+                          ? <polygon
+                              points={`${dotX},${dotY - r} ${dotX + r * 0.87},${dotY + r * 0.5} ${dotX - r * 0.87},${dotY + r * 0.5}`}
+                              fill={color} fillOpacity={isHov ? 1 : 0.8}
+                              stroke={rank ? "#fff" : "none"} strokeWidth={rank ? 1.2 : 0}
+                            />
+                          : <circle cx={dotX} cy={dotY} r={r} fill={color} fillOpacity={isHov ? 1 : 0.65} />
+                        }
+                        {/* action dot */}
+                        {hasAct && <circle cx={dotX + r * 0.75} cy={dotY - r * 0.75} r={2.2} fill="#1a7340" stroke="#fff" strokeWidth={0.8} />}
+                        {/* rank label for P1 */}
+                        {rank && (
+                          <text x={dotX} y={dotY + 3.5} textAnchor="middle" fontSize={7} fontWeight={700} fill="#fff" pointerEvents="none">
+                            {rank}
+                          </text>
+                        )}
                       </g>
                     );
-                  })}
-                  <text x={x(10) + 5} y={pad.top + 10} fontSize={8.5} fill="#b91c1c" fontWeight={700}>P1 Candidate Pool (Tenure ≥ 10)</text>
-                  <text x={pad.left + iW / 2} y={H - 3} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
-                  <text x={12} y={pad.top + iH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${pad.top + iH / 2})`}>Performance</text>
-                  {/* legend */}
-                  <circle cx={pad.left + iW - 60} cy={pad.top + iH - 8} r={3} fill="#1a7340" />
-                  <text x={pad.left + iW - 55} y={pad.top + iH - 5} fontSize={8} fill={C.chartSub}>มี Action แล้ว</text>
-                </svg>
-              );
-            })()}
+                  })
+                }
+                {/* axis labels */}
+                <text x={cx(10) + 5} y={CPAD.top + 11} fontSize={8.5} fill="#b91c1c" fontWeight={700}>⚠ กลุ่มน่าเป็นห่วง (Grade ≤ 3 · Tenure ≥ 10)</text>
+                <text x={CPAD.left + CiW / 2} y={CH - 4} textAnchor="middle" fontSize={9} fill={C.chartSub} fontStyle="italic">อายุงาน (ปี)</text>
+                <text x={12} y={CPAD.top + CiH / 2} textAnchor="middle" fontSize={9} fill={C.chartSub} transform={`rotate(-90,12,${CPAD.top + CiH / 2})`}>Performance</text>
+                {/* legend */}
+                <g transform={`translate(${CPAD.left + CiW - 120},${CPAD.top + CiH - 20})`}>
+                  <polygon points="6,0 10.4,8 1.6,8" fill="#b91c1c" fillOpacity={0.8} />
+                  <text x={14} y={8} fontSize={8} fill={C.chartSub}>Grade ≤ 3 (at-risk)</text>
+                  <circle cx={6} cy={18} r={3.5} fill="#1d4ed8" fillOpacity={0.65} />
+                  <text x={14} y={22} fontSize={8} fill={C.chartSub}>Grade 4+</text>
+                  <circle cx={6} cy={30} r={2} fill="#1a7340" />
+                  <text x={14} y={34} fontSize={8} fill={C.chartSub}>มี Action แล้ว</text>
+                </g>
+                <text x={CPAD.left + CiW - 55} y={CPAD.top + 11} fontSize={8} fill="#b91c1c" fontWeight={700}>
+                  {/* P1 rank indicator */}
+                </text>
+              </svg>
+              {/* tooltip */}
+              {hoveredEmp && (
+                <div style={{
+                  position: "absolute",
+                  left: Math.min(mousePos.x * (chartRef.current?.offsetWidth ?? CW) / CW + 12, (chartRef.current?.offsetWidth ?? 300) - 190),
+                  top: Math.max(mousePos.y * (chartRef.current?.offsetHeight ?? CH) / CH - 20, 0),
+                  background: "#1a2644", borderRadius: 8, padding: "10px 13px",
+                  fontSize: 11, color: "#eef1f8", pointerEvents: "none", zIndex: 20,
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.35)", minWidth: 170,
+                  border: `1.5px solid ${isAtRisk(hoveredEmp) ? C.orange : "#3a5090"}`,
+                }}>
+                  <div style={{ fontWeight: 700, color: "#fff", marginBottom: 4, fontSize: 12 }}>{hoveredEmp.name}</div>
+                  {p1Ranks.has(hoveredEmp.id) && (
+                    <div style={{ display: "inline-block", background: "#b91c1c", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 7px", marginBottom: 5 }}>
+                      P1 #{p1Ranks.get(hoveredEmp.id)}
+                    </div>
+                  )}
+                  {isAtRisk(hoveredEmp) && !p1Ranks.has(hoveredEmp.id) && (
+                    <div style={{ display: "inline-block", background: `${C.orange}30`, color: C.orange, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 7px", marginBottom: 5 }}>▲ กลุ่มน่าเป็นห่วง</div>
+                  )}
+                  <div style={{ color: "#aab3cc", marginBottom: 2 }}>Sub-Grade: <b style={{ color: "#fff" }}>{hoveredEmp.subgrade}</b></div>
+                  <div style={{ color: C.orange, fontWeight: 700, fontSize: 13, marginTop: 3 }}>{hoveredEmp.years} <span style={{ fontSize: 10, color: "#7a8aaa", fontWeight: 400 }}>ปี อายุงาน</span></div>
+                  <div style={{ color: "#60a5fa", fontWeight: 700, fontSize: 11, marginTop: 2 }}>Performance: {hoveredEmp.performance}/5</div>
+                  <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: PRIORITY_META[getPriorityTier(hoveredEmp)].color }}>
+                    {PRIORITY_META[getPriorityTier(hoveredEmp)].label}
+                  </div>
+                  {(acts[hoveredEmp.id] || []).length > 0 && (
+                    <div style={{ marginTop: 5, fontSize: 10, color: "#4ade80" }}>
+                      ✓ {(acts[hoveredEmp.id] || []).map(k => ACTION_TAGS.find(a => a.key === k)?.label).join(", ")}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Top P1 with action badges */}
