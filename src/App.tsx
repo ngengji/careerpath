@@ -306,7 +306,10 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <div style={{marginTop:8}}>
+              <div style={{marginTop:8,display:"flex",gap:6,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                <button onClick={exportExcel} style={{background:"#1a7340",border:"none",color:"#fff",padding:"6px 10px",borderRadius:8,fontSize:fs(11),fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                  <span>⬇</span> Excel
+                </button>
                 <Link to="/executive-priority" style={{textDecoration:"none",display:"inline-block",background:"#fff",color:C.blue,padding:"6px 10px",borderRadius:8,fontSize:fs(11),fontWeight:700}}>
                   Executive Priority
                 </Link>
@@ -556,14 +559,9 @@ export default function App() {
             <div style={{fontSize:fs(12),fontWeight:700,color:"#fff"}}>Executive Priority View</div>
             <div style={{fontSize:fs(10),color:C.sub,marginTop:3}}>เปิดหน้าวิเคราะห์ลำดับ Action จากอายุงาน + ผลงานปีที่ผ่านมา</div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button onClick={exportExcel} style={{background:"#1a7340",border:"none",color:"#fff",padding:"8px 14px",borderRadius:8,fontSize:fs(11),fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:fs(13)}}>⬇</span> ส่งออก Excel
-            </button>
-            <Link to="/executive-priority" style={{textDecoration:"none",background:C.orange,color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:fs(11),fontWeight:700,whiteSpace:"nowrap"}}>
-              ไปหน้า Executive Priority
-            </Link>
-          </div>
+          <Link to="/executive-priority" style={{textDecoration:"none",background:C.orange,color:"#fff",padding:"8px 12px",borderRadius:8,fontSize:fs(11),fontWeight:700,whiteSpace:"nowrap"}}>
+            ไปหน้า Executive Priority
+          </Link>
         </div>
 
         {/* ── GRADE SUMMARY ── */}
