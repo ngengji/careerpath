@@ -96,21 +96,16 @@ export default function App() {
   const xTicks = compact ? [0,5,10,15] : [0,2,4,6,8,10,12,14];
 
   const atRisk   = ALL_EMP.filter(isAtRisk);
-  // offset at-risk dots so all 7 are visible even when overlapping
+  // fan-out at-risk dots so all are visible even when overlapping
   const riskOffsets: Record<number, {dx:number,dy:number}> = {};
   {
-    const placed: {x:number,y:number}[] = [];
-    const minDist = 13;
-    for (const e of atRisk) {
-      let dx = 0, dy = 0;
-      const bx = xSc(e.years), by = ySc(e.yPos);
-      let tries = 0;
-      while (tries < 8 && placed.some(p => Math.hypot(bx+dx-p.x, by+dy-p.y) < minDist)) {
-        dx += 9; dy -= 5; tries++;
-      }
-      riskOffsets[e.id] = {dx, dy};
-      placed.push({x: bx+dx, y: by+dy});
-    }
+    const sorted = [...atRisk].sort((a,b) => a.years - b.years || a.yPos - b.yPos);
+    const n = sorted.length;
+    const spacing = 15; // px between each dot
+    sorted.forEach((e, i) => {
+      const offset = (i - (n - 1) / 2) * spacing;
+      riskOffsets[e.id] = { dx: offset, dy: 0 };
+    });
   }
   // P1 rank map: id → rank 1-5 (always visible on chart)
   const p1RankMap = new Map(
