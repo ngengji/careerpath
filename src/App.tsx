@@ -305,9 +305,9 @@ export default function App() {
                     <g key={sg.key} transform={`translate(0,${ySc(i)})`}>
                       <line x1={-4} x2={0} stroke="#939598" strokeWidth={0.8}/>
                       <rect x={-PAD.left+4} y={-9} width={26} height={18} rx={4} fill={isHigh?`${C.orange}18`:`${C.blue}15`}/>
-                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={12} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
-                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={11} fill="#5a6175">{sg.position}</text>}
-                      <text x={-7} y={4} textAnchor="end" fontSize={11} fill="#939598">({cnt})</text>
+                      <text x={-PAD.left+17} y={4} textAnchor="middle" fontSize={13} fontWeight={700} fill={isHigh?C.orange:C.blue}>{sg.label}</text>
+                      {!compact&&<text x={-PAD.left+36} y={4} textAnchor="start" fontSize={13} fill="#5a6175">{sg.position}</text>}
+                      <text x={-7} y={4} textAnchor="end" fontSize={12} fill="#939598">({cnt})</text>
                     </g>
                   );
                 })}
@@ -320,8 +320,8 @@ export default function App() {
             {/* tooltip */}
             {tooltip&&!selEmp&&(
               <div style={{position:"absolute",
-                left:Math.min(tooltip.cx+PAD.left+14, SVG_W-185),
-                top:Math.max(tooltip.cy+PAD.top-44, 8),
+                left:Math.min(Math.max(tooltip.cx+PAD.left+14-85, 8), SVG_W-185),
+                top:Math.min(tooltip.cy+PAD.top+14, SVG_H-130),
                 background:C.blueDark,borderRadius:8,padding:"10px 14px",
                 fontSize:11,color:"#eef1f8",pointerEvents:"none",zIndex:10,
                 boxShadow:"0 6px 20px rgba(0,0,0,0.35)",minWidth:170,
