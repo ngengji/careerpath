@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.0",
     "cors": "^2.8.6",
     "express": "^4.22.1",
     "react": "^18.3.1",
