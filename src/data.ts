@@ -1,5 +1,6 @@
 // ── Shared employee data & utilities ────────────────────────────────────────
 // Single source of truth — imported by both App.tsx and ExecutivePriorityPage.tsx
+import { createClient } from "@supabase/supabase-js";
 
 export const SUBGRADES = [
   { key:"1A", grade:1, label:"1A", position:"เจ้าหน้าที่ทั่วไป" },
@@ -110,8 +111,6 @@ export const ACTION_TAGS = [
 ];
 
 // ── Supabase client ───────────────────────────────────────────────────────────
-import { createClient } from "@supabase/supabase-js";
-
 const _url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const _key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const supabase = _url && _key ? createClient(_url, _key) : null;
