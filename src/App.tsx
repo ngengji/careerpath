@@ -219,7 +219,7 @@ export default function App() {
                 </div>}
               </div>
             </div>
-            <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{textAlign:"right",flexShrink:0,marginLeft:"auto"}}>
               <div style={{background:C.orange,borderRadius:6,padding:"4px 12px",display:"inline-block",marginBottom:4}}>
                 <span style={{fontSize:fs(11),color:"#fff",fontWeight:700,letterSpacing:1.5}}>LIVE DATA</span>
               </div>
