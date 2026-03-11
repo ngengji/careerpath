@@ -109,40 +109,47 @@ export const ACTION_TAGS = [
   { key:"stretch",    label:"Stretch Assignment",  color:"#EC5924", bg:"#fff4f0" },
 ];
 
+// ── Supabase client ───────────────────────────────────────────────────────────
+import { createClient } from "@supabase/supabase-js";
+
+const _url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const _key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabase = _url && _key ? createClient(_url, _key) : null;
+
 // ── Shared actions persistence ───────────────────────────────────────────────
 export async function loadActions(): Promise<Record<number, string[]>> {
+  if (supabase) {
+    const { data, error } = await supabase.from("actions").select("emp_id, tags");
+    if (!error && data) {
+      const result: Record<number, string[]> = {};
+      for (const row of data) result[row.emp_id] = row.tags ?? [];
+      return result;
+    }
+  }
+  // fallback: localStorage
   try {
-    const r = await fetch("/api/actions");
-    if (!r.ok) throw new Error();
-    const data = await r.json();
+    const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
     const parsed: Record<number, string[]> = {};
-    for (const [k, v] of Object.entries(data)) parsed[Number(k)] = v as string[];
+    for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
     return parsed;
   } catch {
-    try {
-      const saved = JSON.parse(localStorage.getItem("career_actions") || "{}");
-      const parsed: Record<number, string[]> = {};
-      for (const [k, v] of Object.entries(saved)) parsed[Number(k)] = v as string[];
-      return parsed;
-    } catch {
-      return {};
-    }
+    return {};
   }
 }
 
 export async function saveAction(eid: number, actions: string[]): Promise<void> {
-  try {
-    const r = await fetch(`/api/actions/${eid}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actions }),
-    });
-    if (!r.ok) throw new Error();
-  } catch {
-    try {
-      const current = JSON.parse(localStorage.getItem("career_actions") || "{}");
-      if (actions.length === 0) delete current[eid]; else current[eid] = actions;
-      localStorage.setItem("career_actions", JSON.stringify(current));
-    } catch {}
+  if (supabase) {
+    if (actions.length === 0) {
+      await supabase.from("actions").delete().eq("emp_id", eid);
+    } else {
+      await supabase.from("actions").upsert({ emp_id: eid, tags: actions, updated_at: new Date().toISOString() });
+    }
+    return;
   }
+  // fallback: localStorage
+  try {
+    const current = JSON.parse(localStorage.getItem("career_actions") || "{}");
+    if (actions.length === 0) delete current[eid]; else current[eid] = actions;
+    localStorage.setItem("career_actions", JSON.stringify(current));
+  } catch {}
 }
