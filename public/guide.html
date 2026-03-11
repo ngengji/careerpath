@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>คู่มือ Full Stack Vibe Coding</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1729;
+      color: #e2e8f0;
+      line-height: 1.7;
+      padding: 0 16px 60px;
+    }
+    .container { max-width: 780px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1e3a5f, #0f1729);
+      border-bottom: 2px solid #EC5924;
+      padding: 36px 0 28px;
+      margin-bottom: 40px;
+    }
+    header .container { }
+    h1 { font-size: 1.9rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .subtitle { color: #94a3b8; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.2rem; font-weight: 700; color: #f97316;
+      margin: 40px 0 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 20px;
+      background: #f97316;
+      border-radius: 2px;
+    }
+    h3 { font-size: 1rem; font-weight: 700; color: #60a5fa; margin: 20px 0 8px; }
+    p { color: #cbd5e1; margin-bottom: 10px; }
+    ul { padding-left: 20px; margin-bottom: 12px; }
+    li { color: #cbd5e1; margin-bottom: 5px; }
+    code {
+      background: #1e293b;
+      color: #86efac;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.88em;
+    }
+    pre {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      margin: 12px 0 18px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.85em;
+      color: #86efac;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .card-title { font-weight: 700; color: #fff; margin-bottom: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #1e3a5f;
+      color: #93c5fd;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 700;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+      background: #0f172a;
+    }
+    tr:hover td { background: #1e293b; }
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-right: 5px;
+    }
+    .tag-blue  { background: #1e3a5f; color: #93c5fd; }
+    .tag-green { background: #14532d; color: #86efac; }
+    .tag-orange{ background: #431407; color: #fdba74; }
+    .divider { border: none; border-top: 1px solid #1e293b; margin: 32px 0; }
+    .golden {
+      background: linear-gradient(135deg, #1e3a2f, #14532d22);
+      border: 1px solid #166534;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 24px 0;
+    }
+    .golden h3 { color: #4ade80; margin-top: 0; }
+    .golden li { color: #86efac; }
+    .arch {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin: 14px 0 20px;
+    }
+    .arch .box {
+      display: inline-block;
+      background: #0f172a;
+      border: 1px solid #EC5924;
+      border-radius: 6px;
+      padding: 6px 16px;
+      color: #fdba74;
+      font-weight: 700;
+    }
+    .arch .arrow { display: block; color: #475569; margin: 4px 0; }
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid #1e293b;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+    }
+    footer a { color: #60a5fa; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #EC5924;
+      color: #fff;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      margin-bottom: 28px;
+      transition: background 0.15s;
+    }
+    .back-btn:hover { background: #c2410c; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>📘 คู่มือ Full Stack Vibe Coding</h1>
+      <p class="subtitle">ตั้งแต่ไอเดีย → หน้าตาเว็บ → ฐานข้อมูล → ใช้งานจริงบน Internet</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <a href="./index.html" class="back-btn">← กลับหน้าแดชบอร์ด</a>
+
+    <h2>ภาพรวม: เราทำอะไร?</h2>
+    <p>
+      เริ่มจาก dashboard หน้าเดียวที่<strong style="color:#fff"> ดูข้อมูลได้อย่างเดียว</strong>
+      → จบที่ web app ที่<strong style="color:#4ade80"> เก็บข้อมูลได้จริง ซิงค์ทุกอุปกรณ์ ใช้งานได้ทั่วโลก</strong>
+    </p>
+
+    <div class="arch">
+      <span class="box">Browser (React)</span>
+      <span class="arrow">↕ supabase-js</span>
+      <span class="box">Supabase (PostgreSQL)</span>
+      <span class="arrow">↑</span>
+      <span class="box">GitHub Actions (build + deploy)</span>
+      <span class="arrow">↑</span>
+      <span class="box">GitHub (source code)</span>
+    </div>
+
+    <hr class="divider" />
+
+    <h2>ขั้นตอนที่ 1 — สร้าง Frontend (หน้าตาเว็บ)</h2>
+    <p><span class="tag tag-blue">React</span><span class="tag tag-blue">TypeScript</span><span class="tag tag-blue">Vite</span></p>
+    <ul>
+      <li><strong>React</strong> — framework สร้าง UI เป็น component เล็กๆ ประกอบกัน</li>
+      <li><strong>TypeScript</strong> — JavaScript ที่มี type ช่วยจับ bug ก่อน run</li>
+      <li><strong>Vite</strong> — ตัว build และ dev server ให้ทำงานเร็ว</li>
+    </ul>
+    <h3>สิ่งที่ทำในขั้นนี้</h3>
+    <ul>
+      <li>วาดกราฟ scatter plot ด้วย SVG</li>
+      <li>ทำ filter, tooltip, action panel</li>
+      <li>ใช้ seeded random สร้างข้อมูลจำลอง 190 คน ให้ผลเหมือนกันทุกครั้ง</li>
+      <li>แยก <code>data.ts</code> เป็น <em>single source of truth</em> ไม่ให้ข้อมูลสองหน้าต่างกัน</li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>ขั้นตอนที่ 2 — เพิ่ม Database (เก็บข้อมูลจริง)</h2>
+    <p><span class="tag tag-green">Supabase</span><span class="tag tag-green">PostgreSQL</span></p>
+    <p>ทำไมถึงเลือก Supabase?</p>
+    <ul>
+      <li>มี REST API สำเร็จรูป ไม่ต้องเขียน backend เอง</li>
+      <li><code>anon key</code> ใส่ใน frontend ได้ปลอดภัย เพราะมี Row Level Security คุม</li>
+      <li>Free tier เพียงพอสำหรับงาน internal</li>
+    </ul>
+    <h3>SQL ที่รันใน Supabase</h3>
+    <pre><code>-- สร้างตารางเก็บ action plan
+CREATE TABLE actions (
+  emp_id integer PRIMARY KEY,
+  tags   text[]   DEFAULT '{}'
+);
+
+-- เปิด security แต่ให้ anon อ่าน/เขียนได้
+ALTER TABLE actions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_anon_all" ON actions
+  FOR ALL TO anon
+  USING (true) WITH CHECK (true);</code></pre>
+    <p>อย่าลืมเปิด <strong style="color:#fdba74">Settings → API → Enable Data API</strong> ด้วย มิฉะนั้น REST API จะ 404</p>
+
+    <hr class="divider" />
+
+    <h2>ขั้นตอนที่ 3 — เชื่อม Frontend กับ Database</h2>
+    <p><span class="tag tag-green">@supabase/supabase-js</span></p>
+    <pre><code>// อ่านข้อมูลจาก database
+const { data } = await supabase
+  .from("actions")
+  .select("emp_id, tags");
+
+// บันทึกข้อมูล (upsert = insert ถ้าไม่มี, update ถ้ามีแล้ว)
+await supabase.from("actions").upsert({
+  emp_id: 133,
+  tags: ["promote", "succession"]
+});</code></pre>
+    <h3>Design Pattern สำคัญ — Fallback</h3>
+    <div class="card">
+      <div class="card-title">ลำดับการใช้งาน</div>
+      <p>ลอง Supabase ก่อน → ถ้าไม่ได้ → ใช้ localStorage แทน</p>
+      <p style="color:#94a3b8;font-size:0.88rem">ทำให้เว็บยังใช้งานได้แม้ไม่มี internet หรือ database มีปัญหา</p>
+    </div>
+
+    <hr class="divider" />
+
+    <h2>ขั้นตอนที่ 4 — Deploy ขึ้น Internet</h2>
+    <p><span class="tag tag-blue">GitHub</span><span class="tag tag-blue">GitHub Pages</span><span class="tag tag-blue">GitHub Actions</span></p>
+    <pre><code>code ในเครื่อง → git push → GitHub Actions build → GitHub Pages deploy</code></pre>
+    <h3>ไฟล์สำคัญ</h3>
+    <table>
+      <thead><tr><th>ไฟล์</th><th>หน้าที่</th></tr></thead>
+      <tbody>
+        <tr><td><code>.github/workflows/deploy.yml</code></td><td>สั่ง GitHub ทำอะไรเมื่อมี push</td></tr>
+        <tr><td><code>.env.local</code></td><td>API keys (ไม่ขึ้น GitHub!)</td></tr>
+        <tr><td><code>src/data.ts</code></td><td>ข้อมูลกลาง + functions เชื่อม database</td></tr>
+      </tbody>
+    </table>
+    <h3>เรื่อง Security ของ API Key</h3>
+    <ul>
+      <li><code>.env.local</code> → ใส่ใน <code>.gitignore</code> → ไม่ขึ้น GitHub</li>
+      <li><strong>GitHub Secrets</strong> → เก็บ key ให้ GitHub Actions ใช้ตอน build</li>
+      <li><strong>anon key</strong> → ปลอดภัยเพราะ RLS จำกัดสิ่งที่ทำได้แม้ถูก copy ไปใช้</li>
+    </ul>
+
+    <hr class="divider" />
+
+    <h2>ปัญหาที่เจอและวิธีแก้</h2>
+    <table>
+      <thead><tr><th>ปัญหา</th><th>สาเหตุ</th><th>วิธีแก้</th></tr></thead>
+      <tbody>
+        <tr><td>ข้อมูลสองหน้าไม่ตรงกัน</td><td>แต่ละหน้าสร้างข้อมูลเอง</td><td>รวมเป็น <code>data.ts</code> ไฟล์เดียว</td></tr>
+        <tr><td>Build fail บน GitHub</td><td>ลืม commit <code>package.json</code></td><td><code>git add package.json</code></td></tr>
+        <tr><td>Supabase 404</td><td>ไม่ได้เปิด Data API</td><td>Settings → Enable Data API</td></tr>
+        <tr><td>ข้อมูลไม่ซิงค์ข้าม device</td><td>ยังใช้ localStorage อยู่</td><td>เปิด Data API + ตั้ง Secrets</td></tr>
+        <tr><td>dot ซ้อนทับกันในกราฟ</td><td>พนักงานอายุงาน/ตำแหน่งใกล้กัน</td><td>Z-order + disambiguation popup</td></tr>
+      </tbody>
+    </table>
+
+    <hr class="divider" />
+
+    <div class="golden">
+      <h3>🏆 กฎทอง Vibe Coding</h3>
+      <ul>
+        <li>ถามทีละขั้น ไม่ต้องรู้ทุกอย่างก่อนเริ่ม</li>
+        <li>Error message คือ clue — copy ไปถามได้เลย</li>
+        <li>ทดสอบบ่อยๆ อย่ารอทำเสร็จทั้งหมดแล้วค่อยทดสอบ</li>
+        <li>Commit บ่อยๆ เผื่อต้องย้อนกลับ</li>
+        <li>ไม่ต้องเข้าใจทุก line — เข้าใจแค่ว่า "ทำอะไร" ก็พอ</li>
+      </ul>
+    </div>
+
+    <footer>
+      <a href="./index.html">← กลับหน้าแดชบอร์ด</a>
+      &nbsp;·&nbsp;
+      สร้างด้วย React + Supabase + GitHub Pages
+    </footer>
+  </div>
+</body>
+</html>

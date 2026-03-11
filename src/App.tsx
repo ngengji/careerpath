@@ -609,6 +609,21 @@ export default function App() {
         </div>
 
       </div>
+
+      {/* Footer */}
+      <div style={{textAlign:"center", padding:"16px 0 10px", borderTop:`1px solid ${C.border}`, marginTop:8}}>
+        <a
+          href="./guide.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{color:C.sub, fontSize:fs(11), textDecoration:"none", opacity:0.7}}
+          onMouseEnter={e=>(e.currentTarget.style.opacity="1")}
+          onMouseLeave={e=>(e.currentTarget.style.opacity="0.7")}
+        >
+          📘 คู่มือ Full Stack Vibe Coding
+        </a>
+      </div>
+
     </div>
   );
 }
